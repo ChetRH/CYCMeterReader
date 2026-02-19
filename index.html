@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Marina Meter Readings</title>
+    <title>CYC Meter Reader</title>
+    <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
 <style>
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
@@ -105,6 +106,48 @@
         }
         .btn-clear:active { transform: scale(0.97); opacity: 0.85; }
 
+        .btn-onedrive {
+            width: 100%;
+            padding: 16px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #0078d4, #004e8c);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+        .btn-onedrive:active { transform: scale(0.97); opacity: 0.85; }
+        .btn-onedrive:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .ms-login-bar {
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #16213e;
+            border-radius: 12px;
+            padding: 12px 18px;
+            margin-bottom: 16px;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+        .ms-login-bar span { color: #4fc3f7; font-weight: bold; }
+        .btn-mslogin {
+            padding: 8px 18px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            background: #0078d4;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
         .dock-btn {
             padding: 14px 22px;
             font-size: 1.3rem;
@@ -189,6 +232,12 @@
     </div>
     <p class="subtitle">Docks A, B, C — Slips 01 to 40</p>
 
+    <!-- Microsoft Login Bar -->
+    <div class="ms-login-bar" id="msLoginBar">
+        <div id="msUserLabel">Not signed in to Microsoft</div>
+        <button class="btn-mslogin" id="msLoginBtn" onclick="msLogin()">Sign In</button>
+    </div>
+
     <!-- Entry Card -->
     <div class="card">
         <div class="form-group">
@@ -222,6 +271,7 @@
 
     <!-- Actions Card -->
     <div class="card">
+        <button class="btn-onedrive" id="syncBtn" onclick="syncToOneDrive()" disabled>☁️ Sync to OneDrive Excel</button>
         <button class="btn-export" onclick="exportCSV()">📊 Export to CSV (Excel)</button>
         <button class="btn-clear" onclick="clearAll()">🗑️ Clear All Readings</button>
     </div>
@@ -242,7 +292,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.4 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.5 &nbsp;2/19/2026</div>
 
 
 <script>
@@ -424,6 +474,122 @@
         updateSlipDisplay();
         autoFillPrev();
         renderTable();
+
+        // ── Microsoft / OneDrive Sync ─────────────────────────────
+        const MSAL_CONFIG = {
+            auth: {
+                clientId: '7df5213e-e0a0-4fff-ad01-69e83d7cb6f5',
+                authority: 'https://login.microsoftonline.com/common',
+                redirectUri: window.location.href.split('?')[0]
+            },
+            cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true }
+        };
+        const EXCEL_PATH = '/Dock Operations - General/Meter Reading/CYC Dock Meter Reading.xlsx';
+        const GRAPH_SCOPES = ['Files.ReadWrite', 'User.Read'];
+
+        const msalInstance = new msal.PublicClientApplication(MSAL_CONFIG);
+        let msalAccount = null;
+
+        // Handle redirect response on page load
+        msalInstance.handleRedirectPromise().then(resp => {
+            if (resp && resp.account) msalAccount = resp.account;
+            else {
+                const accounts = msalInstance.getAllAccounts();
+                if (accounts.length > 0) msalAccount = accounts[0];
+            }
+            updateLoginUI();
+        }).catch(e => console.error('MSAL redirect error:', e));
+
+        function updateLoginUI() {
+            const label = document.getElementById('msUserLabel');
+            const btn = document.getElementById('msLoginBtn');
+            const syncBtn = document.getElementById('syncBtn');
+            if (msalAccount) {
+                label.innerHTML = `Signed in: <span>${msalAccount.username}</span>`;
+                btn.textContent = 'Sign Out';
+                btn.onclick = msLogout;
+                syncBtn.disabled = false;
+            } else {
+                label.textContent = 'Not signed in to Microsoft';
+                btn.textContent = 'Sign In';
+                btn.onclick = msLogin;
+                syncBtn.disabled = true;
+            }
+        }
+
+        function msLogin() {
+            msalInstance.loginRedirect({ scopes: GRAPH_SCOPES });
+        }
+
+        function msLogout() {
+            msalInstance.logoutRedirect({ account: msalAccount });
+        }
+
+        async function getToken() {
+            try {
+                const resp = await msalInstance.acquireTokenSilent({ scopes: GRAPH_SCOPES, account: msalAccount });
+                return resp.accessToken;
+            } catch (e) {
+                const resp = await msalInstance.acquireTokenPopup({ scopes: GRAPH_SCOPES });
+                return resp.accessToken;
+            }
+        }
+
+        async function syncToOneDrive() {
+            const readings = getReadings();
+            if (!readings.length) { showToast('⚠️ No readings to sync', true); return; }
+
+            const btn = document.getElementById('syncBtn');
+            btn.textContent = '⏳ Syncing…';
+            btn.disabled = true;
+
+            try {
+                const token = await getToken();
+                const headers = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+
+                // Get the OneDrive for Business / personal drive item for the file
+                // First try SharePoint/OneDrive for the Capital Yacht Club tenant
+                const driveRes = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:${EXCEL_PATH}`, { headers });
+                if (!driveRes.ok) {
+                    const err = await driveRes.json();
+                    throw new Error(err.error?.message || 'File not found on OneDrive');
+                }
+                const driveItem = await driveRes.json();
+                const fileId = driveItem.id;
+
+                // Get or create the Sheet1 worksheet and clear it first
+                const wsRes = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${fileId}/workbook/worksheets`, { headers });
+                const wsData = await wsRes.json();
+                const sheetName = wsData.value[0].name;
+
+                // Build rows: header + sorted data
+                const sorted = [...readings].sort((a, b) => a.meterId.localeCompare(b.meterId));
+                const rows = [
+                    ['Slip', 'Previous Reading', 'Current Reading', 'Usage', 'Date', 'Time'],
+                    ...sorted.map(r => [r.meterId, r.prevReading || '', r.reading, r.usage || '', r.date, r.time])
+                ];
+
+                // Write to worksheet range
+                const range = `A1:F${rows.length}`;
+                const updateRes = await fetch(
+                    `https://graph.microsoft.com/v1.0/me/drive/items/${fileId}/workbook/worksheets('${sheetName}')/range(address='${range}')`,
+                    { method: 'PATCH', headers, body: JSON.stringify({ values: rows }) }
+                );
+
+                if (!updateRes.ok) {
+                    const err = await updateRes.json();
+                    throw new Error(err.error?.message || 'Failed to write to Excel');
+                }
+
+                showToast(`☁️ Synced ${sorted.length} rows to OneDrive!`);
+            } catch (e) {
+                console.error('Sync error:', e);
+                showToast('❌ Sync failed: ' + e.message, true);
+            } finally {
+                btn.textContent = '☁️ Sync to OneDrive Excel';
+                btn.disabled = false;
+            }
+        }
     </script>
 </body>
 </html>
