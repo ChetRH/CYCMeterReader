@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Marina Meter Readings</title>
+<style>
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        h1 { font-size: 2rem; color: #4fc3f7; margin-bottom: 6px; text-align: center; letter-spacing: 1px; }
+        .subtitle { color: #888; font-size: 0.9rem; margin-bottom: 30px; }
+
+        .card {
+            background: #16213e;
+            border-radius: 16px;
+            padding: 24px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            margin-bottom: 20px;
+        }
+
+        .form-group { margin-bottom: 18px; }
+
+        label {
+            display: block;
+            font-size: 0.8rem;
+            color: #4fc3f7;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        input[type=number], input[type=text] {
+            width: 100%;
+            padding: 16px 18px;
+            font-size: 1.6rem;
+            background: #0f3460;
+            border: 2px solid #1a4a80;
+            border-radius: 10px;
+            color: #fff;
+            outline: none;
+            transition: border-color 0.2s;
+            letter-spacing: 2px;
+        }
+
+        input:focus { border-color: #4fc3f7; }
+        input::placeholder { color: #445; letter-spacing: 1px; }
+
+        .btn-submit {
+            width: 100%;
+            padding: 20px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #4fc3f7, #0288d1);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+            letter-spacing: 1px;
+            margin-top: 8px;
+        }
+        .btn-submit:active { transform: scale(0.97); opacity: 0.85; }
+
+.btn-export {
+            width: 100%;
+            padding: 16px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #66bb6a, #388e3c);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+        .btn-export:active { transform: scale(0.97); opacity: 0.85; }
+
+        .btn-clear {
+            width: 100%;
+            padding: 16px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #ef5350, #b71c1c);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+            letter-spacing: 1px;
+        }
+        .btn-clear:active { transform: scale(0.97); opacity: 0.85; }
+
+        .dock-btn {
+            padding: 14px 22px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            background: #0f3460;
+            color: #aaa;
+            border: 2px solid #1a4a80;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.15s;
+            min-width: 56px;
+        }
+        .dock-btn.active { background: #0288d1; color: #fff; border-color: #4fc3f7; }
+
+.toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #4fc3f7;
+            color: #000;
+            padding: 14px 28px;
+            border-radius: 30px;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            white-space: nowrap;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .toast.error { background: #ef5350; color: #fff; }
+
+        .readings-table-wrap { width: 100%; max-width: 500px; overflow-x: auto; }
+
+        .section-title {
+            font-size: 1rem;
+            color: #4fc3f7;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 14px;
+        }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+        thead tr { background: #0f3460; }
+        th { padding: 12px 10px; text-align: left; color: #4fc3f7; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; }
+        td { padding: 12px 10px; border-bottom: 1px solid #1a2a4a; color: #ddd; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #1a2a4a; }
+
+        .empty-msg { text-align: center; color: #555; padding: 30px; font-size: 0.95rem; }
+
+        .count-badge {
+            display: inline-block;
+            background: #0f3460;
+            color: #4fc3f7;
+            border-radius: 20px;
+            padding: 2px 12px;
+            font-size: 0.85rem;
+            margin-left: 8px;
+        }
+
+        .progress-bar-wrap {
+            width: 100%;
+            background: #0f3460;
+            border-radius: 6px;
+            height: 8px;
+            margin-top: 6px;
+        }
+        .progress-bar {
+            height: 8px;
+            border-radius: 6px;
+            background: linear-gradient(90deg, #4fc3f7, #0288d1);
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>⚓ Marina Meter Readings</h1>
+    <p class="subtitle">Docks A, B, C — Slips 01 to 40</p>
+
+    <!-- Entry Card -->
+    <div class="card">
+        <div class="form-group">
+            <label>Current Slip</label>
+            <div style="display:flex; gap:12px; align-items:center;">
+                <div style="display:flex; gap:8px;">
+                    <button class="dock-btn" id="dockA" onclick="setDock('A')">A</button>
+                    <button class="dock-btn" id="dockB" onclick="setDock('B')">B</button>
+                    <button class="dock-btn" id="dockC" onclick="setDock('C')">C</button>
+                </div>
+                <div id="currentSlipDisplay" style="font-size:2rem; font-weight:bold; color:#4fc3f7; letter-spacing:3px; flex:1; text-align:center;">A01</div>
+            </div>
+            <div class="progress-bar-wrap">
+                <div class="progress-bar" id="progressBar" style="width:0%"></div>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Meter Reading</label>
+            <input type="number" id="meterReading" placeholder="e.g. 12345" inputmode="numeric" autocomplete="off" autofocus>
+        </div>
+<button class="btn-submit" onclick="saveReading()">💾 Save &amp; Next Slip</button>
+    </div>
+
+    <!-- Actions Card -->
+    <div class="card">
+        <button class="btn-export" onclick="exportCSV()">📊 Export to CSV (Excel)</button>
+        <button class="btn-clear" onclick="clearAll()">🗑️ Clear All Readings</button>
+    </div>
+
+    <!-- Readings Table -->
+    <div class="readings-table-wrap">
+        <div class="card">
+            <div class="section-title">
+                Saved Readings
+                <span class="count-badge" id="countBadge">0</span>
+            </div>
+            <div id="tableContainer">
+                <div class="empty-msg">No readings saved yet.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <div style="position:fixed; bottom:6px; right:10px; font-size:8pt; color:#444; pointer-events:none;">Ver 1.0 &nbsp;2/19/2026</div>
+
+
+<script>
+        const STORAGE_KEY = 'meter_readings';
+        const DOCKS = ['A', 'B', 'C'];
+        const MAX_SLIP = 40;
+
+        let currentDock = 'A';
+        let currentSlip = 1;
+
+// ── Slip helpers ──────────────────────────────────────────
+        function slipId(dock, slip) {
+            return `${dock}${String(slip).padStart(2, '0')}`;
+        }
+
+        function updateSlipDisplay() {
+            document.getElementById('currentSlipDisplay').textContent = slipId(currentDock, currentSlip);
+            DOCKS.forEach(d => document.getElementById('dock' + d).classList.toggle('active', d === currentDock));
+            // Progress bar: total 120 slips
+            const dockIdx = DOCKS.indexOf(currentDock);
+            const done = dockIdx * MAX_SLIP + (currentSlip - 1);
+            document.getElementById('progressBar').style.width = `${(done / (DOCKS.length * MAX_SLIP)) * 100}%`;
+        }
+
+        function setDock(dock) {
+            currentDock = dock;
+            currentSlip = 1;
+            updateSlipDisplay();
+            document.getElementById('meterReading').focus();
+        }
+
+        function advanceSlip() {
+            if (currentSlip < MAX_SLIP) {
+                currentSlip++;
+            } else {
+                const nextDockIndex = DOCKS.indexOf(currentDock) + 1;
+                if (nextDockIndex < DOCKS.length) {
+                    currentDock = DOCKS[nextDockIndex];
+                    currentSlip = 1;
+                    showToast(`📍 Now on Dock ${currentDock}`);
+                } else {
+                    showToast('🎉 All slips completed!');
+                    return;
+                }
+            }
+            updateSlipDisplay();
+        }
+
+        // ── Storage ───────────────────────────────────────────────
+        function getReadings() { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+        function saveReadings(r) { localStorage.setItem(STORAGE_KEY, JSON.stringify(r)); }
+
+        // ── Toast ─────────────────────────────────────────────────
+        function showToast(msg, isError = false) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'toast' + (isError ? ' error' : '');
+            setTimeout(() => t.classList.add('show'), 10);
+            setTimeout(() => t.classList.remove('show'), 2800);
+        }
+
+        // ── Save reading ──────────────────────────────────────────
+        function saveReading() {
+            const val = document.getElementById('meterReading').value.trim();
+            if (!val) { showToast('⚠️ Please enter a reading', true); document.getElementById('meterReading').focus(); return; }
+
+            const now = new Date();
+            const entry = { meterId: slipId(currentDock, currentSlip), reading: val, date: now.toLocaleDateString(), time: now.toLocaleTimeString() };
+            const readings = getReadings();
+            readings.unshift(entry);
+            saveReadings(readings);
+            renderTable();
+            showToast(`✅ ${entry.meterId} saved!`);
+            document.getElementById('meterReading').value = '';
+            advanceSlip();
+            document.getElementById('meterReading').focus();
+        }
+
+
+// ── Export ────────────────────────────────────────────────
+        function exportCSV() {
+            const readings = getReadings();
+            if (!readings.length) { showToast('⚠️ No readings to export', true); return; }
+            const sorted = [...readings].sort((a, b) => a.meterId.localeCompare(b.meterId));
+            let csv = 'Slip,Reading,Date,Time\n';
+            sorted.forEach(r => { csv += `"${r.meterId}","${r.reading}","${r.date}","${r.time}"\n`; });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `marina_readings_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('📊 CSV exported!');
+        }
+
+        // ── Clear ─────────────────────────────────────────────────
+        function clearAll() {
+            const readings = getReadings();
+            if (!readings.length) { showToast('⚠️ Nothing to clear', true); return; }
+            if (confirm(`Delete all ${readings.length} readings? This cannot be undone.`)) {
+                saveReadings([]);
+                currentDock = 'A'; currentSlip = 1;
+                updateSlipDisplay();
+                renderTable();
+                showToast('🗑️ All readings cleared');
+            }
+        }
+
+        // ── Table ─────────────────────────────────────────────────
+        function renderTable() {
+            const readings = getReadings();
+            document.getElementById('countBadge').textContent = readings.length;
+            const container = document.getElementById('tableContainer');
+            if (!readings.length) { container.innerHTML = '<div class="empty-msg">No readings saved yet.</div>'; return; }
+            let html = `<table><thead><tr><th>Slip</th><th>Reading</th><th>Date</th><th>Time</th></tr></thead><tbody>`;
+            readings.forEach(r => { html += `<tr><td><strong>${r.meterId}</strong></td><td>${r.reading}</td><td>${r.date}</td><td>${r.time}</td></tr>`; });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        // Enter key submits
+        document.addEventListener('keydown', e => { if (e.key === 'Enter') saveReading(); });
+
+        // Init
+        updateSlipDisplay();
+        renderTable();
+    </script>
+</body>
+</html>
