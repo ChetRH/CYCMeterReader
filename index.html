@@ -292,7 +292,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.6 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.7 &nbsp;2/19/2026</div>
 
 
 <script>
@@ -480,7 +480,7 @@
             auth: {
                 clientId: '7df5213e-e0a0-4fff-ad01-69e83d7cb6f5',
                 authority: 'https://login.microsoftonline.com/common',
-                redirectUri: 'https://chetRH.github.io/CYCMeterReader/'
+                redirectUri: window.location.origin + window.location.pathname
             },
             cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true }
         };
@@ -517,12 +517,25 @@
             }
         }
 
-        function msLogin() {
-            msalInstance.loginRedirect({ scopes: GRAPH_SCOPES });
+        async function msLogin() {
+            try {
+                const resp = await msalInstance.loginPopup({ scopes: GRAPH_SCOPES });
+                msalAccount = resp.account;
+                updateLoginUI();
+            } catch (e) {
+                console.error('Login error:', e);
+                showToast('❌ Sign in failed: ' + e.message, true);
+            }
         }
 
-        function msLogout() {
-            msalInstance.logoutRedirect({ account: msalAccount });
+        async function msLogout() {
+            try {
+                await msalInstance.logoutPopup({ account: msalAccount });
+                msalAccount = null;
+                updateLoginUI();
+            } catch (e) {
+                console.error('Logout error:', e);
+            }
         }
 
         async function getToken() {
