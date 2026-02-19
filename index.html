@@ -291,7 +291,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 2.6 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 2.7 &nbsp;2/19/2026</div>
 
 
 <script>
@@ -630,17 +630,44 @@
                 const wsData = await wsRes.json();
                 if (!wsData.value || !wsData.value.length) throw new Error('No worksheets found in workbook');
                 const sheetName = wsData.value[0].name;
+                const sheetBase = `${baseUrl}/workbook/worksheets('${sheetName}')`;
 
-                // Step 6: Write data
+                // Step 6: Read existing Excel data to use as "previous" baseline
+                // Read up to 122 rows (header + 120 slips max)
+                const existingRes = await fetch(`${sheetBase}/range(address='A1:F122')`, { headers: sessionHeaders });
+                const existingData = existingRes.ok ? await existingRes.json() : null;
+                const existingRows = existingData?.values || [];
+
+                // Build a map of slip -> current reading from Excel (will become new "previous")
+                const excelPrev = {};
+                for (let i = 1; i < existingRows.length; i++) {
+                    const [slip, , curr] = existingRows[i];
+                    if (slip && curr !== '' && curr !== null) excelPrev[slip] = curr;
+                }
+
+                // Step 7: Build output rows — one row per slip, sorted A01-C40
+                // New row: Slip | Previous (from Excel current) | Current (new reading) | Usage | Date | Time
                 const sorted = [...readings].sort((a, b) => a.meterId.localeCompare(b.meterId));
                 const rows = [
                     ['Slip', 'Previous Reading', 'Current Reading', 'Usage', 'Date', 'Time'],
-                    ...sorted.map(r => [r.meterId, r.prevReading || '', r.reading, r.usage || '', r.date, r.time])
+                    ...sorted.map(r => {
+                        const prev = excelPrev[r.meterId] !== undefined ? excelPrev[r.meterId] : (r.prevReading || '');
+                        const usage = (prev !== '' && !isNaN(prev) && !isNaN(r.reading))
+                            ? (parseFloat(r.reading) - parseFloat(prev)).toFixed(0) : '';
+                        return [r.meterId, prev, r.reading, usage, r.date, r.time];
+                    })
                 ];
 
-                const range = `A1:F${rows.length}`;
+                // Step 8: Clear old data beyond new row count, then write
+                const totalRows = 122;
+                const clearRange = `A1:F${totalRows}`;
+                await fetch(`${sheetBase}/range(address='${clearRange}')/clear`,
+                    { method: 'POST', headers: sessionHeaders, body: JSON.stringify({ applyTo: 'contents' }) }
+                );
+
+                const writeRange = `A1:F${rows.length}`;
                 const updateRes = await fetch(
-                    `${baseUrl}/workbook/worksheets('${sheetName}')/range(address='${range}')`,
+                    `${sheetBase}/range(address='${writeRange}')`,
                     { method: 'PATCH', headers: sessionHeaders, body: JSON.stringify({ values: rows }) }
                 );
 
@@ -652,7 +679,7 @@
                 // Close the session
                 await fetch(`${baseUrl}/workbook/closeSession`, { method: 'POST', headers: sessionHeaders });
 
-                showToast(`☁️ Synced ${sorted.length} rows to SharePoint!`);
+                showToast(`☁️ Synced ${sorted.length} slips to SharePoint!`);
             } catch (e) {
                 console.error('Sync error:', e);
                 showToast('❌ Sync failed: ' + e.message, true);
