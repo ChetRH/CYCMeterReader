@@ -206,10 +206,18 @@
             </div>
         </div>
         <div class="form-group">
-            <label>Meter Reading</label>
+            <label>Previous Reading</label>
+            <input type="number" id="prevReading" placeholder="auto-filled" inputmode="numeric" autocomplete="off" style="opacity:0.7;">
+        </div>
+        <div class="form-group">
+            <label>Current Reading</label>
             <input type="number" id="meterReading" placeholder="e.g. 12345" inputmode="numeric" autocomplete="off" autofocus>
         </div>
-<button class="btn-submit" onclick="saveReading()">💾 Save &amp; Next Slip</button>
+        <div class="form-group" id="usageDisplay" style="display:none;">
+            <label>Usage</label>
+            <div id="usageValue" style="font-size:1.6rem; font-weight:bold; color:#4fc3f7; letter-spacing:2px; padding: 8px 0;"></div>
+        </div>
+        <button class="btn-submit" onclick="saveReading()">💾 Save &amp; Next Slip</button>
     </div>
 
     <!-- Actions Card -->
@@ -234,7 +242,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.3 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.4 &nbsp;2/19/2026</div>
 
 
 <script>
@@ -263,6 +271,7 @@
             currentDock = dock;
             currentSlip = 1;
             updateSlipDisplay();
+            autoFillPrev();
             document.getElementById('meterReading').focus();
         }
 
@@ -281,6 +290,19 @@
                 }
             }
             updateSlipDisplay();
+            autoFillPrev();
+        }
+
+        // ── Auto-fill previous reading ────────────────────────────
+        function autoFillPrev() {
+            const id = slipId(currentDock, currentSlip);
+            const readings = getReadings();
+            const last = readings.find(r => r.meterId === id);
+            const prevEl = document.getElementById('prevReading');
+            prevEl.value = last ? last.reading : '';
+            prevEl.style.opacity = last ? '1' : '0.7';
+            prevEl.placeholder = last ? '' : 'no prior reading';
+            updateUsageDisplay();
         }
 
         // ── Storage ───────────────────────────────────────────────
@@ -296,19 +318,44 @@
             setTimeout(() => t.classList.remove('show'), 2800);
         }
 
+        // ── Live usage display ────────────────────────────────────
+        function updateUsageDisplay() {
+            const prev = parseFloat(document.getElementById('prevReading').value);
+            const curr = parseFloat(document.getElementById('meterReading').value);
+            const box = document.getElementById('usageDisplay');
+            const val = document.getElementById('usageValue');
+            if (!isNaN(prev) && !isNaN(curr) && curr >= prev) {
+                val.textContent = (curr - prev).toFixed(0);
+                box.style.display = 'block';
+            } else {
+                box.style.display = 'none';
+            }
+        }
+
         // ── Save reading ──────────────────────────────────────────
         function saveReading() {
-            const val = document.getElementById('meterReading').value.trim();
-            if (!val) { showToast('⚠️ Please enter a reading', true); document.getElementById('meterReading').focus(); return; }
+            const curr = document.getElementById('meterReading').value.trim();
+            if (!curr) { showToast('⚠️ Please enter a reading', true); document.getElementById('meterReading').focus(); return; }
+
+            const prev = document.getElementById('prevReading').value.trim();
+            const usage = (prev !== '' && !isNaN(prev) && !isNaN(curr)) ? (parseFloat(curr) - parseFloat(prev)).toFixed(0) : '';
 
             const now = new Date();
-            const entry = { meterId: slipId(currentDock, currentSlip), reading: val, date: now.toLocaleDateString(), time: now.toLocaleTimeString() };
+            const entry = {
+                meterId: slipId(currentDock, currentSlip),
+                prevReading: prev,
+                reading: curr,
+                usage: usage,
+                date: now.toLocaleDateString(),
+                time: now.toLocaleTimeString()
+            };
             const readings = getReadings();
             readings.unshift(entry);
             saveReadings(readings);
             renderTable();
-            showToast(`✅ ${entry.meterId} saved!`);
+            showToast(`✅ ${entry.meterId} saved!${usage !== '' ? ' Usage: ' + usage : ''}`);
             document.getElementById('meterReading').value = '';
+            document.getElementById('usageDisplay').style.display = 'none';
             advanceSlip();
             document.getElementById('meterReading').focus();
         }
@@ -319,13 +366,15 @@
             const readings = getReadings();
             if (!readings.length) { showToast('⚠️ No readings to export', true); return; }
             const sorted = [...readings].sort((a, b) => a.meterId.localeCompare(b.meterId));
-            let csv = 'Slip,Reading,Date,Time\n';
-            sorted.forEach(r => { csv += `"${r.meterId}","${r.reading}","${r.date}","${r.time}"\n`; });
+            let csv = 'Slip,Previous Reading,Current Reading,Usage,Date,Time\n';
+            sorted.forEach(r => {
+                csv += `"${r.meterId}","${r.prevReading || ''}","${r.reading}","${r.usage || ''}","${r.date}","${r.time}"\n`;
+            });
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `marina_readings_${new Date().toISOString().slice(0,10)}.csv`;
+            a.download = `cyc_meter_readings_${new Date().toISOString().slice(0,10)}.csv`;
             a.click();
             URL.revokeObjectURL(url);
             showToast('📊 CSV exported!');
@@ -350,17 +399,30 @@
             document.getElementById('countBadge').textContent = readings.length;
             const container = document.getElementById('tableContainer');
             if (!readings.length) { container.innerHTML = '<div class="empty-msg">No readings saved yet.</div>'; return; }
-            let html = `<table><thead><tr><th>Slip</th><th>Reading</th><th>Date</th><th>Time</th></tr></thead><tbody>`;
-            readings.forEach(r => { html += `<tr><td><strong>${r.meterId}</strong></td><td>${r.reading}</td><td>${r.date}</td><td>${r.time}</td></tr>`; });
+            let html = `<table><thead><tr><th>Slip</th><th>Prev</th><th>Current</th><th>Usage</th><th>Date</th></tr></thead><tbody>`;
+            readings.forEach(r => {
+                html += `<tr>
+                    <td><strong>${r.meterId}</strong></td>
+                    <td>${r.prevReading || '—'}</td>
+                    <td>${r.reading}</td>
+                    <td>${r.usage !== '' && r.usage !== undefined ? r.usage : '—'}</td>
+                    <td>${r.date}</td>
+                </tr>`;
+            });
             html += '</tbody></table>';
             container.innerHTML = html;
         }
+
+        // Live usage update on input
+        document.getElementById('meterReading').addEventListener('input', updateUsageDisplay);
+        document.getElementById('prevReading').addEventListener('input', updateUsageDisplay);
 
         // Enter key submits
         document.addEventListener('keydown', e => { if (e.key === 'Enter') saveReading(); });
 
         // Init
         updateSlipDisplay();
+        autoFillPrev();
         renderTable();
     </script>
 </body>
