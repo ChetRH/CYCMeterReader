@@ -291,7 +291,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 2.4 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 2.5 &nbsp;2/19/2026</div>
 
 
 <script>
@@ -579,28 +579,39 @@
                 const siteData = await siteRes.json();
                 const siteId = siteData.id;
 
-                // Step 2: Get the default document library drive for this site
+                // Step 2: Get all document library drives for this site
                 const drivesRes = await fetch(
                     `https://graph.microsoft.com/v1.0/sites/${siteId}/drives`,
                     { headers }
                 );
                 const drivesData = await drivesRes.json();
-                // Pick the "Documents" drive (driveType = documentLibrary)
-                const docDrive = (drivesData.value || []).find(d => d.driveType === 'documentLibrary') || drivesData.value[0];
-                const driveId = docDrive.id;
+                const siteDrives = drivesData.value || [];
+                console.log('Site drives:', siteDrives.map(d => d.name + ' (' + d.driveType + ')'));
 
-                // Step 3: Get the file by path within that drive
-                const encodedPath = encodeURIComponent(EXCEL_FILE);
-                const fileRes = await fetch(
-                    `https://graph.microsoft.com/v1.0/drives/${driveId}/root:${EXCEL_FOLDER}/${encodedPath}`,
-                    { headers }
-                );
-                if (!fileRes.ok) {
-                    const e = await fileRes.json();
-                    throw new Error('Could not find Excel file: ' + (e.error?.message || fileRes.status));
+                // Step 3: Search each drive for the Excel file by name
+                let fileId = null;
+                let driveId = null;
+                for (const drive of siteDrives) {
+                    const searchRes = await fetch(
+                        `https://graph.microsoft.com/v1.0/drives/${drive.id}/root/search(q='CYC Dock Meter Reading')`,
+                        { headers }
+                    );
+                    if (!searchRes.ok) continue;
+                    const searchData = await searchRes.json();
+                    console.log(`Drive "${drive.name}" search results:`, (searchData.value || []).map(f => f.name));
+                    const found = (searchData.value || []).find(f => f.name === EXCEL_FILE);
+                    if (found) {
+                        fileId = found.id;
+                        driveId = drive.id;
+                        console.log('Found file in drive:', drive.name);
+                        break;
+                    }
                 }
-                const fileData = await fileRes.json();
-                const fileId = fileData.id;
+
+                if (!fileId) {
+                    const driveNames = siteDrives.map(d => d.name).join(', ');
+                    throw new Error(`"${EXCEL_FILE}" not found in site drives: [${driveNames}]`);
+                }
 
                 const baseUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}`;
 
