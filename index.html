@@ -291,7 +291,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 2.3 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 2.4 &nbsp;2/19/2026</div>
 
 
 <script>
@@ -475,8 +475,11 @@
         renderTable();
 
         // ── Microsoft / OneDrive Sync ─────────────────────────────
-        const EXCEL_PATH = '/Dock Operations - General/Meter Reading/CYC Dock Meter Reading.xlsx';
-        const GRAPH_SCOPES = ['Files.ReadWrite', 'User.Read'];
+        const SP_HOSTNAME   = 'capitalyachtclubcom.sharepoint.com';
+        const SP_SITE_PATH  = '/sites/DockOperations';
+        const EXCEL_FILE    = 'CYC Dock Meter Reading.xlsx';
+        const EXCEL_FOLDER  = '/Dock Operations - General/Meter Reading';
+        const GRAPH_SCOPES  = ['Files.ReadWrite.All', 'Sites.ReadWrite.All', 'User.Read'];
         let msalInstance = null;
         let msalAccount = null;
 
@@ -564,46 +567,49 @@
                 const token = await getToken();
                 const headers = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
 
-                // Search across ALL drives the user has access to
-                let fileId = null;
-                let driveId = null;
-
-                // Get list of all available drives (personal + shared/org)
-                const drivesRes = await fetch(`https://graph.microsoft.com/v1.0/me/drives`, { headers });
-                const drivesData = drivesRes.ok ? await drivesRes.json() : { value: [] };
-                const drives = drivesData.value || [];
-
-                // Always include the default personal drive
-                const meRes = await fetch(`https://graph.microsoft.com/v1.0/me/drive`, { headers });
-                if (meRes.ok) {
-                    const meDrive = await meRes.json();
-                    if (!drives.find(d => d.id === meDrive.id)) drives.unshift(meDrive);
+                // Step 1: Get the SharePoint site by hostname + site path
+                const siteRes = await fetch(
+                    `https://graph.microsoft.com/v1.0/sites/${SP_HOSTNAME}:${SP_SITE_PATH}`,
+                    { headers }
+                );
+                if (!siteRes.ok) {
+                    const e = await siteRes.json();
+                    throw new Error('Could not access SharePoint site: ' + (e.error?.message || siteRes.status));
                 }
+                const siteData = await siteRes.json();
+                const siteId = siteData.id;
 
-                // Search each drive for the file
-                for (const drive of drives) {
-                    const searchRes = await fetch(
-                        `https://graph.microsoft.com/v1.0/drives/${drive.id}/root/search(q='CYC Dock Meter Reading')`,
-                        { headers }
-                    );
-                    if (!searchRes.ok) continue;
-                    const searchData = await searchRes.json();
-                    const found = (searchData.value || []).find(f => f.name === 'CYC Dock Meter Reading.xlsx');
-                    if (found) {
-                        fileId = found.id;
-                        driveId = drive.id;
-                        break;
-                    }
+                // Step 2: Get the default document library drive for this site
+                const drivesRes = await fetch(
+                    `https://graph.microsoft.com/v1.0/sites/${siteId}/drives`,
+                    { headers }
+                );
+                const drivesData = await drivesRes.json();
+                // Pick the "Documents" drive (driveType = documentLibrary)
+                const docDrive = (drivesData.value || []).find(d => d.driveType === 'documentLibrary') || drivesData.value[0];
+                const driveId = docDrive.id;
+
+                // Step 3: Get the file by path within that drive
+                const encodedPath = encodeURIComponent(EXCEL_FILE);
+                const fileRes = await fetch(
+                    `https://graph.microsoft.com/v1.0/drives/${driveId}/root:${EXCEL_FOLDER}/${encodedPath}`,
+                    { headers }
+                );
+                if (!fileRes.ok) {
+                    const e = await fileRes.json();
+                    throw new Error('Could not find Excel file: ' + (e.error?.message || fileRes.status));
                 }
-
-                if (!fileId) throw new Error('CYC Dock Meter Reading.xlsx not found in any accessible drive');
+                const fileData = await fileRes.json();
+                const fileId = fileData.id;
 
                 const baseUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}`;
 
+                // Step 4: Get worksheet name
                 const wsRes = await fetch(`${baseUrl}/workbook/worksheets`, { headers });
                 const wsData = await wsRes.json();
                 const sheetName = wsData.value[0].name;
 
+                // Step 5: Write data
                 const sorted = [...readings].sort((a, b) => a.meterId.localeCompare(b.meterId));
                 const rows = [
                     ['Slip', 'Previous Reading', 'Current Reading', 'Usage', 'Date', 'Time'],
@@ -621,7 +627,7 @@
                     throw new Error(err.error?.message || 'Failed to write to Excel');
                 }
 
-                showToast(`☁️ Synced ${sorted.length} rows to OneDrive!`);
+                showToast(`☁️ Synced ${sorted.length} rows to SharePoint!`);
             } catch (e) {
                 console.error('Sync error:', e);
                 showToast('❌ Sync failed: ' + e.message, true);
