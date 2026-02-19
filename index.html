@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CYC Meter Reader</title>
-    <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
 <style>
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
@@ -292,7 +291,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.7 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.8 &nbsp;2/19/2026</div>
 
 
 <script>
@@ -476,6 +475,16 @@
         renderTable();
 
         // ── Microsoft / OneDrive Sync ─────────────────────────────
+        // Dynamically load MSAL then initialize
+        (function loadMSAL() {
+            const s = document.createElement('script');
+            s.src = 'https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js';
+            s.onload = initMSAL;
+            s.onerror = () => showToast('❌ Could not load Microsoft login library', true);
+            document.head.appendChild(s);
+        })();
+
+        function initMSAL() {
         const MSAL_CONFIG = {
             auth: {
                 clientId: '7df5213e-e0a0-4fff-ad01-69e83d7cb6f5',
@@ -490,15 +499,11 @@
         const msalInstance = new msal.PublicClientApplication(MSAL_CONFIG);
         let msalAccount = null;
 
-        // Handle redirect response on page load
-        msalInstance.handleRedirectPromise().then(resp => {
-            if (resp && resp.account) msalAccount = resp.account;
-            else {
-                const accounts = msalInstance.getAllAccounts();
-                if (accounts.length > 0) msalAccount = accounts[0];
-            }
-            updateLoginUI();
-        }).catch(e => console.error('MSAL redirect error:', e));
+        // Check for already-signed-in account
+        const accounts = msalInstance.getAllAccounts();
+        if (accounts.length > 0) { msalAccount = accounts[0]; }
+        updateLoginUI();
+        } // end initMSAL
 
         function updateLoginUI() {
             const label = document.getElementById('msUserLabel');
