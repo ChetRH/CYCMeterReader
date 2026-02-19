@@ -291,7 +291,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 2.2 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 2.3 &nbsp;2/19/2026</div>
 
 
 <script>
@@ -564,31 +564,41 @@
                 const token = await getToken();
                 const headers = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
 
-                // Search all drives for the file (handles both personal and org OneDrive)
+                // Search across ALL drives the user has access to
                 let fileId = null;
                 let driveId = null;
 
-                // Try personal OneDrive first
-                const driveRes = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:${EXCEL_PATH}`, { headers });
-                if (driveRes.ok) {
-                    const item = await driveRes.json();
-                    fileId = item.id;
-                    driveId = null; // use default me/drive
-                } else {
-                    // Try searching across all drives
-                    const searchRes = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root/search(q='CYC Dock Meter Reading')`, { headers });
-                    if (!searchRes.ok) throw new Error('File not found in any OneDrive');
-                    const searchData = await searchRes.json();
-                    const found = searchData.value?.find(f => f.name === 'CYC Dock Meter Reading.xlsx');
-                    if (!found) throw new Error('CYC Dock Meter Reading.xlsx not found');
-                    fileId = found.id;
-                    // Extract driveId from parentReference
-                    driveId = found.parentReference?.driveId;
+                // Get list of all available drives (personal + shared/org)
+                const drivesRes = await fetch(`https://graph.microsoft.com/v1.0/me/drives`, { headers });
+                const drivesData = drivesRes.ok ? await drivesRes.json() : { value: [] };
+                const drives = drivesData.value || [];
+
+                // Always include the default personal drive
+                const meRes = await fetch(`https://graph.microsoft.com/v1.0/me/drive`, { headers });
+                if (meRes.ok) {
+                    const meDrive = await meRes.json();
+                    if (!drives.find(d => d.id === meDrive.id)) drives.unshift(meDrive);
                 }
 
-                const baseUrl = driveId
-                    ? `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}`
-                    : `https://graph.microsoft.com/v1.0/me/drive/items/${fileId}`;
+                // Search each drive for the file
+                for (const drive of drives) {
+                    const searchRes = await fetch(
+                        `https://graph.microsoft.com/v1.0/drives/${drive.id}/root/search(q='CYC Dock Meter Reading')`,
+                        { headers }
+                    );
+                    if (!searchRes.ok) continue;
+                    const searchData = await searchRes.json();
+                    const found = (searchData.value || []).find(f => f.name === 'CYC Dock Meter Reading.xlsx');
+                    if (found) {
+                        fileId = found.id;
+                        driveId = drive.id;
+                        break;
+                    }
+                }
+
+                if (!fileId) throw new Error('CYC Dock Meter Reading.xlsx not found in any accessible drive');
+
+                const baseUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}`;
 
                 const wsRes = await fetch(`${baseUrl}/workbook/worksheets`, { headers });
                 const wsData = await wsRes.json();
