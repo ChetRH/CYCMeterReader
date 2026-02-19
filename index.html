@@ -333,7 +333,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.0 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.1 &nbsp;2/19/2026</div>
 
 
 <script>
@@ -835,23 +835,39 @@
                 const existingData = existingRes.ok ? await existingRes.json() : null;
                 const existingRows = existingData?.values || [];
 
-                // Build a map of slip -> current reading from Excel (will become new "previous")
-                const excelPrev = {};
+                // Build a map of existing Excel rows keyed by slip (col A)
+                // existing: slip -> { prev, curr, usage, date, time }
+                const excelMap = {};
                 for (let i = 1; i < existingRows.length; i++) {
-                    const [slip, , curr] = existingRows[i];
-                    if (slip && curr !== '' && curr !== null) excelPrev[slip] = curr;
+                    const [slip, prev, curr, usage, date, time] = existingRows[i];
+                    if (slip && String(slip).trim()) excelMap[String(slip).trim()] = { prev, curr, usage, date, time };
                 }
 
-                // Step 7: Build output rows — one row per slip, sorted A01-C40
-                // New row: Slip | Previous (from Excel current) | Current (new reading) | Usage | Date | Time
-                const sorted = [...readings].sort((a, b) => a.meterId.localeCompare(b.meterId));
+                // Build a map of new local readings keyed by slip
+                const newMap = {};
+                readings.forEach(r => { newMap[r.meterId] = r; });
+
+                // Merge: for every slip that exists in either source, produce one row
+                // New reading overrides Excel; Excel row kept if no new reading this cycle
+                const allSlips = new Set([...Object.keys(excelMap), ...Object.keys(newMap)]);
+                const sorted = [...allSlips].sort();
+
                 const rows = [
                     ['Slip', 'Previous Reading', 'Current Reading', 'Usage', 'Date', 'Time'],
-                    ...sorted.map(r => {
-                        const prev = excelPrev[r.meterId] !== undefined ? excelPrev[r.meterId] : (r.prevReading || '');
-                        const usage = (prev !== '' && !isNaN(prev) && !isNaN(r.reading))
-                            ? (parseFloat(r.reading) - parseFloat(prev)).toFixed(0) : '';
-                        return [r.meterId, prev, r.reading, usage, r.date, r.time];
+                    ...sorted.map(slip => {
+                        if (newMap[slip]) {
+                            // New reading this cycle — Excel current becomes new previous
+                            const r = newMap[slip];
+                            const prev = excelMap[slip]?.curr !== undefined && excelMap[slip]?.curr !== '' && excelMap[slip]?.curr !== null
+                                ? excelMap[slip].curr : (r.prevReading || '');
+                            const usage = (prev !== '' && !isNaN(prev) && !isNaN(r.reading))
+                                ? (parseFloat(r.reading) - parseFloat(prev)).toFixed(0) : '';
+                            return [slip, prev, r.reading, usage, r.date, r.time];
+                        } else {
+                            // No new reading — keep existing Excel row unchanged
+                            const e = excelMap[slip];
+                            return [slip, e.prev ?? '', e.curr ?? '', e.usage ?? '', e.date ?? '', e.time ?? ''];
+                        }
                     })
                 ];
 
@@ -876,9 +892,9 @@
                 // Close the session
                 await fetch(`${baseUrl}/workbook/closeSession`, { method: 'POST', headers: sessionHeaders });
 
-                // Update local baseline so prev readings reflect what's now in SharePoint
+                // Update local baseline: slip -> current reading now in SharePoint
                 const newBaseline = {};
-                sorted.forEach(r => { newBaseline[r.meterId] = r.reading; });
+                rows.slice(1).forEach(([slip, , curr]) => { if (slip && curr !== '') newBaseline[slip] = curr; });
                 saveBaseline(newBaseline);
 
                 showToast(`☁️ Synced ${sorted.length} slips to SharePoint!`);
