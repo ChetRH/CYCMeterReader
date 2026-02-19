@@ -280,7 +280,7 @@
                     <button class="dock-btn" id="dockB" onclick="setDock('B')">B</button>
                     <button class="dock-btn" id="dockC" onclick="setDock('C')">C</button>
                 </div>
-                <div id="currentSlipDisplay" style="font-size:2rem; font-weight:bold; color:#4fc3f7; letter-spacing:3px; flex:1; text-align:center;">A01</div>
+                <div id="currentSlipDisplay" style="font-size:2.4rem; font-weight:bold; color:#ffe066; letter-spacing:3px; flex:1; text-align:center;">A01</div>
             </div>
             <div class="progress-bar-wrap">
                 <div class="progress-bar" id="progressBar" style="width:0%"></div>
@@ -297,6 +297,10 @@
         <div class="form-group" id="usageDisplay" style="display:none;">
             <label>Usage</label>
             <div id="usageValue" style="font-size:1.6rem; font-weight:bold; color:#4fc3f7; letter-spacing:2px; padding: 8px 0;"></div>
+        </div>
+        <div class="form-group">
+            <label>Slip Notes</label>
+            <input type="text" id="slipNotes" placeholder="e.g. meter stuck, no access…" autocomplete="off" style="font-size:1rem; letter-spacing:0;">
         </div>
         <button class="btn-submit" onclick="saveReading()">💾 Save &amp; Next Slip</button>
     </div>
@@ -317,23 +321,15 @@
         <p style="color:#666; font-size:0.8rem; margin-top:8px;">Clears all data from the SharePoint Excel file so you can start a fresh billing cycle. You must be signed in to Microsoft.</p>
     </div>
 
-    <!-- Readings Table -->
-    <div class="readings-table-wrap">
-        <div class="card">
-            <div class="section-title">
-                Saved Readings
-                <span class="count-badge" id="countBadge">0</span>
-            </div>
-            <div id="tableContainer">
-                <div class="empty-msg">No readings saved yet.</div>
-            </div>
-        </div>
+    <!-- Readings count (compact, no full table) -->
+    <div style="width:100%; max-width:500px; text-align:center; color:#555; font-size:0.85rem; margin-top:4px; margin-bottom:8px;">
+        <span id="countBadge" class="count-badge">0</span> readings saved locally
     </div>
 
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.2 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.3 &nbsp;2/19/2026</div>
 
 
 <script>
@@ -447,6 +443,7 @@
 
             const prev = document.getElementById('prevReading').value.trim();
             const usage = (prev !== '' && !isNaN(prev) && !isNaN(curr)) ? (parseFloat(curr) - parseFloat(prev)).toFixed(0) : '';
+            const notes = document.getElementById('slipNotes').value.trim();
 
             const now = new Date();
             const entry = {
@@ -454,6 +451,7 @@
                 prevReading: prev,
                 reading: curr,
                 usage: usage,
+                notes: notes,
                 date: now.toLocaleDateString(),
                 time: now.toLocaleTimeString()
             };
@@ -461,8 +459,9 @@
             readings.unshift(entry);
             saveReadings(readings);
             renderTable();
-            showToast(`✅ ${entry.meterId} saved!${usage !== '' ? ' Usage: ' + usage : ''}`);
+            showToast(`✅ ${entry.meterId} saved!${usage !== '' ? ' Usage: ' + usage : ''}${notes ? ' 📝' : ''}`);
             document.getElementById('meterReading').value = '';
+            document.getElementById('slipNotes').value = '';
             document.getElementById('usageDisplay').style.display = 'none';
             advanceSlip();
             document.getElementById('meterReading').focus();
@@ -506,20 +505,6 @@
         function renderTable() {
             const readings = getReadings();
             document.getElementById('countBadge').textContent = readings.length;
-            const container = document.getElementById('tableContainer');
-            if (!readings.length) { container.innerHTML = '<div class="empty-msg">No readings saved yet.</div>'; return; }
-            let html = `<table><thead><tr><th>Slip</th><th>Prev</th><th>Current</th><th>Usage</th><th>Date</th></tr></thead><tbody>`;
-            readings.forEach(r => {
-                html += `<tr>
-                    <td><strong>${r.meterId}</strong></td>
-                    <td>${r.prevReading || '—'}</td>
-                    <td>${r.reading}</td>
-                    <td>${r.usage !== '' && r.usage !== undefined ? r.usage : '—'}</td>
-                    <td>${r.date}</td>
-                </tr>`;
-            });
-            html += '</tbody></table>';
-            container.innerHTML = html;
         }
 
         // Live usage update on input
@@ -598,7 +583,7 @@
                 const wsData = await (await fetch(`${baseUrl}/workbook/worksheets`, { headers: sessionHeaders })).json();
                 const sheetName = wsData.value[0].name;
                 const rangeRes = await fetch(
-                    `${baseUrl}/workbook/worksheets('${sheetName}')/range(address='A1:C122')`,
+                    `${baseUrl}/workbook/worksheets('${sheetName}')/range(address='A1:G122')`,
                     { headers: sessionHeaders }
                 );
                 await fetch(`${baseUrl}/workbook/closeSession`, { method: 'POST', headers: sessionHeaders });
@@ -680,12 +665,12 @@
                 const sheetBase = `${baseUrl}/workbook/worksheets('${sheetName}')`;
 
                 // Write just the header row, clear everything else
-                await fetch(`${sheetBase}/range(address='A1:F122')/clear`,
+                await fetch(`${sheetBase}/range(address='A1:G122')/clear`,
                     { method: 'POST', headers: sessionHeaders, body: JSON.stringify({ applyTo: 'contents' }) }
                 );
-                await fetch(`${sheetBase}/range(address='A1:F1')`,
+                await fetch(`${sheetBase}/range(address='A1:G1')`,
                     { method: 'PATCH', headers: sessionHeaders,
-                      body: JSON.stringify({ values: [['Slip', 'Previous Reading', 'Current Reading', 'Usage', 'Date', 'Time']] }) }
+                      body: JSON.stringify({ values: [['Slip', 'Previous Reading', 'Current Reading', 'Usage', 'Date', 'Time', 'Notes']] }) }
                 );
 
                 await fetch(`${baseUrl}/workbook/closeSession`, { method: 'POST', headers: sessionHeaders });
@@ -835,56 +820,61 @@
                 const sheetName = wsData.value[0].name;
                 const sheetBase = `${baseUrl}/workbook/worksheets('${sheetName}')`;
 
-                // Step 6: Read existing Excel data to use as "previous" baseline
-                // Read up to 122 rows (header + 120 slips max)
-                const existingRes = await fetch(`${sheetBase}/range(address='A1:F122')`, { headers: sessionHeaders });
+                // Step 6: Read existing Excel data (cols A-G)
+                const existingRes = await fetch(`${sheetBase}/range(address='A1:G122')`, { headers: sessionHeaders });
                 const existingData = existingRes.ok ? await existingRes.json() : null;
                 const existingRows = existingData?.values || [];
 
-                // Build a map of existing Excel rows keyed by slip (col A)
-                // existing: slip -> { prev, curr, usage, date, time }
+                // Build map: slip -> existing row data
                 const excelMap = {};
                 for (let i = 1; i < existingRows.length; i++) {
-                    const [slip, prev, curr, usage, date, time] = existingRows[i];
-                    if (slip && String(slip).trim()) excelMap[String(slip).trim()] = { prev, curr, usage, date, time };
+                    const [slip, prev, curr, usage, date, time, notes] = existingRows[i];
+                    const key = String(slip || '').trim();
+                    if (key) excelMap[key] = { prev, curr, usage, date, time, notes };
                 }
 
-                // Build a map of new local readings keyed by slip
+                // Build map of new local readings
                 const newMap = {};
                 readings.forEach(r => { newMap[r.meterId] = r; });
 
-                // Merge: for every slip that exists in either source, produce one row
-                // New reading overrides Excel; Excel row kept if no new reading this cycle
-                const allSlips = new Set([...Object.keys(excelMap), ...Object.keys(newMap)]);
-                const sorted = [...allSlips].sort();
+                // Build canonical full slip list A01-C40, merged with any existing Excel slips
+                const canonicalSlips = [];
+                DOCKS.forEach(d => {
+                    for (let s = 1; s <= MAX_SLIP; s++) canonicalSlips.push(slipId(d, s));
+                });
+                // Add any extra slips only in Excel (e.g. from old data)
+                Object.keys(excelMap).forEach(slip => { if (!canonicalSlips.includes(slip)) canonicalSlips.push(slip); });
+                canonicalSlips.sort();
 
                 const rows = [
-                    ['Slip', 'Previous Reading', 'Current Reading', 'Usage', 'Date', 'Time'],
-                    ...sorted.map(slip => {
+                    ['Slip', 'Previous Reading', 'Current Reading', 'Usage', 'Date', 'Time', 'Notes'],
+                    ...canonicalSlips.map(slip => {
                         if (newMap[slip]) {
                             // New reading this cycle — Excel current becomes new previous
                             const r = newMap[slip];
-                            const prev = excelMap[slip]?.curr !== undefined && excelMap[slip]?.curr !== '' && excelMap[slip]?.curr !== null
-                                ? excelMap[slip].curr : (r.prevReading || '');
+                            const exCurr = excelMap[slip]?.curr;
+                            const prev = (exCurr !== undefined && exCurr !== '' && exCurr !== null)
+                                ? exCurr : (r.prevReading || '');
                             const usage = (prev !== '' && !isNaN(prev) && !isNaN(r.reading))
                                 ? (parseFloat(r.reading) - parseFloat(prev)).toFixed(0) : '';
-                            return [slip, prev, r.reading, usage, r.date, r.time];
-                        } else {
+                            return [slip, prev, r.reading, usage, r.date, r.time, r.notes || ''];
+                        } else if (excelMap[slip]) {
                             // No new reading — keep existing Excel row unchanged
                             const e = excelMap[slip];
-                            return [slip, e.prev ?? '', e.curr ?? '', e.usage ?? '', e.date ?? '', e.time ?? ''];
+                            return [slip, e.prev ?? '', e.curr ?? '', e.usage ?? '', e.date ?? '', e.time ?? '', e.notes ?? ''];
+                        } else {
+                            // Slip with no data at all — blank row
+                            return [slip, '', '', '', '', '', ''];
                         }
                     })
                 ];
 
-                // Step 8: Clear old data beyond new row count, then write
-                const totalRows = 122;
-                const clearRange = `A1:F${totalRows}`;
-                await fetch(`${sheetBase}/range(address='${clearRange}')/clear`,
+                // Step 7: Clear and rewrite entire sheet cleanly
+                await fetch(`${sheetBase}/range(address='A1:G122')/clear`,
                     { method: 'POST', headers: sessionHeaders, body: JSON.stringify({ applyTo: 'contents' }) }
                 );
 
-                const writeRange = `A1:F${rows.length}`;
+                const writeRange = `A1:G${rows.length}`;
                 const updateRes = await fetch(
                     `${sheetBase}/range(address='${writeRange}')`,
                     { method: 'PATCH', headers: sessionHeaders, body: JSON.stringify({ values: rows }) }
