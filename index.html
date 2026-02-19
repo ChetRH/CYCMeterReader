@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Marina Meter Readings</title>
-    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
-    <style>
+<style>
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
         body {
@@ -75,23 +74,7 @@
         }
         .btn-submit:active { transform: scale(0.97); opacity: 0.85; }
 
-        .btn-camera {
-            width: 100%;
-            padding: 16px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            background: linear-gradient(135deg, #ab47bc, #6a1b9a);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: transform 0.1s, opacity 0.2s;
-            letter-spacing: 1px;
-            margin-bottom: 10px;
-        }
-        .btn-camera:active { transform: scale(0.97); opacity: 0.85; }
-
-        .btn-export {
+.btn-export {
             width: 100%;
             padding: 16px;
             font-size: 1.1rem;
@@ -136,102 +119,7 @@
         }
         .dock-btn.active { background: #0288d1; color: #fff; border-color: #4fc3f7; }
 
-        /* Camera Modal */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.85);
-            z-index: 500;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        .modal-overlay.active { display: flex; }
-
-        .modal-box {
-            background: #16213e;
-            border-radius: 16px;
-            padding: 24px;
-            width: 100%;
-            max-width: 480px;
-            box-shadow: 0 8px 40px rgba(0,0,0,0.6);
-        }
-
-        .modal-title {
-            font-size: 1.1rem;
-            color: #4fc3f7;
-            font-weight: bold;
-            margin-bottom: 16px;
-            text-align: center;
-            letter-spacing: 1px;
-        }
-
-        #cameraPreview, #capturedCanvas {
-            width: 100%;
-            border-radius: 10px;
-            background: #000;
-            display: block;
-        }
-
-        #capturedCanvas { display: none; }
-
-        .ocr-result-box {
-            margin-top: 14px;
-            background: #0f3460;
-            border-radius: 10px;
-            padding: 14px;
-            text-align: center;
-            display: none;
-        }
-
-        .ocr-result-label {
-            font-size: 0.75rem;
-            color: #4fc3f7;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 6px;
-        }
-
-        .ocr-result-value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #fff;
-            letter-spacing: 3px;
-        }
-
-        .ocr-status {
-            text-align: center;
-            color: #aaa;
-            font-size: 0.9rem;
-            margin-top: 10px;
-            min-height: 22px;
-        }
-
-        .modal-btns {
-            display: flex;
-            gap: 10px;
-            margin-top: 14px;
-        }
-
-        .btn-modal {
-            flex: 1;
-            padding: 14px;
-            font-size: 1rem;
-            font-weight: bold;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: opacity 0.15s;
-        }
-        .btn-modal:active { opacity: 0.8; }
-        .btn-snap { background: linear-gradient(135deg, #ab47bc, #6a1b9a); color: #fff; }
-        .btn-retake { background: #0f3460; color: #4fc3f7; border: 2px solid #1a4a80; }
-        .btn-use { background: linear-gradient(135deg, #66bb6a, #388e3c); color: #fff; }
-        .btn-cancel { background: #1a2a4a; color: #aaa; }
-
-        .toast {
+.toast {
             position: fixed;
             bottom: 30px;
             left: 50%;
@@ -318,9 +206,7 @@
             <label>Meter Reading</label>
             <input type="number" id="meterReading" placeholder="e.g. 12345" inputmode="numeric" autocomplete="off" autofocus>
         </div>
-        <!-- Camera Button -->
-        <button class="btn-camera" onclick="openCamera()">📷 Snap Photo to Read Meter</button>
-        <button class="btn-submit" onclick="saveReading()">💾 Save &amp; Next Slip</button>
+<button class="btn-submit" onclick="saveReading()">💾 Save &amp; Next Slip</button>
     </div>
 
     <!-- Actions Card -->
@@ -345,38 +231,16 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <!-- Camera Modal -->
-    <div class="modal-overlay" id="cameraModal">
-        <div class="modal-box">
-            <div class="modal-title">📷 Point camera at meter display</div>
-            <video id="cameraPreview" autoplay playsinline muted></video>
-            <canvas id="capturedCanvas"></canvas>
-            <div class="ocr-result-box" id="ocrResultBox">
-                <div class="ocr-result-label">Detected Reading</div>
-                <div class="ocr-result-value" id="ocrResultValue">—</div>
-            </div>
-            <div class="ocr-status" id="ocrStatus"></div>
-            <div class="modal-btns" id="modalBtns">
-                <button class="btn-modal btn-snap" id="snapBtn" onclick="snapPhoto()">📸 Capture</button>
-                <button class="btn-modal btn-cancel" onclick="closeCamera()">✕ Cancel</button>
-            </div>
-        </div>
-    </div>
 
-    <!-- Hidden file input for fallback -->
-    <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none" onchange="handleFileInput(event)">
-
-    <script>
+<script>
         const STORAGE_KEY = 'meter_readings';
         const DOCKS = ['A', 'B', 'C'];
         const MAX_SLIP = 40;
 
         let currentDock = 'A';
         let currentSlip = 1;
-        let cameraStream = null;
-        let ocrResult = '';
 
-        // ── Slip helpers ──────────────────────────────────────────
+// ── Slip helpers ──────────────────────────────────────────
         function slipId(dock, slip) {
             return `${dock}${String(slip).padStart(2, '0')}`;
         }
@@ -444,148 +308,8 @@
             document.getElementById('meterReading').focus();
         }
 
-        // ── Camera / OCR ──────────────────────────────────────────
-        async function openCamera() {
-            const modal = document.getElementById('cameraModal');
-            const video = document.getElementById('cameraPreview');
-            const canvas = document.getElementById('capturedCanvas');
-            document.getElementById('ocrResultBox').style.display = 'none';
-            document.getElementById('ocrStatus').textContent = '';
-            document.getElementById('ocrResultValue').textContent = '—';
-            ocrResult = '';
-            resetModalBtns();
-            video.style.display = 'block';
-            canvas.style.display = 'none';
-            modal.classList.add('active');
 
-            try {
-                cameraStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
-                });
-                video.srcObject = cameraStream;
-            } catch (err) {
-                // Fallback: use file input (works on iPad if camera permission denied)
-                modal.classList.remove('active');
-                showToast('📁 Opening photo picker…');
-                document.getElementById('fileInput').click();
-            }
-        }
-
-        function closeCamera() {
-            if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
-            document.getElementById('cameraModal').classList.remove('active');
-        }
-
-        function resetModalBtns() {
-            document.getElementById('modalBtns').innerHTML = `
-                <button class="btn-modal btn-snap" id="snapBtn" onclick="snapPhoto()">📸 Capture</button>
-                <button class="btn-modal btn-cancel" onclick="closeCamera()">✕ Cancel</button>`;
-        }
-
-        async function snapPhoto() {
-            const video = document.getElementById('cameraPreview');
-            const canvas = document.getElementById('capturedCanvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0);
-
-            // Stop live preview, show captured image
-            if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
-            video.style.display = 'none';
-            canvas.style.display = 'block';
-
-            document.getElementById('ocrStatus').textContent = '🔍 Reading meter…';
-            document.getElementById('modalBtns').innerHTML = `<button class="btn-modal btn-cancel" onclick="closeCamera()">✕ Cancel</button>`;
-
-            try {
-                const { data: { text } } = await Tesseract.recognize(canvas, 'eng', {
-                    logger: m => { if (m.status === 'recognizing text') document.getElementById('ocrStatus').textContent = `🔍 ${Math.round(m.progress * 100)}% scanned…`; }
-                });
-
-                // Extract only digits from OCR result
-                const digits = text.replace(/[^0-9]/g, '');
-                ocrResult = digits;
-
-                document.getElementById('ocrStatus').textContent = digits ? '' : '⚠️ No numbers detected — try again';
-                document.getElementById('ocrResultBox').style.display = digits ? 'block' : 'none';
-                document.getElementById('ocrResultValue').textContent = digits || '—';
-
-                document.getElementById('modalBtns').innerHTML = digits
-                    ? `<button class="btn-modal btn-use" onclick="useOcrResult()">✅ Use ${digits}</button>
-                       <button class="btn-modal btn-retake" onclick="retakePhoto()">🔄 Retake</button>
-                       <button class="btn-modal btn-cancel" onclick="closeCamera()">✕ Cancel</button>`
-                    : `<button class="btn-modal btn-retake" onclick="retakePhoto()">🔄 Retake</button>
-                       <button class="btn-modal btn-cancel" onclick="closeCamera()">✕ Cancel</button>`;
-
-            } catch (e) {
-                document.getElementById('ocrStatus').textContent = '❌ OCR failed — please type manually';
-                document.getElementById('modalBtns').innerHTML = `
-                    <button class="btn-modal btn-retake" onclick="retakePhoto()">🔄 Retake</button>
-                    <button class="btn-modal btn-cancel" onclick="closeCamera()">✕ Cancel</button>`;
-            }
-        }
-
-        function retakePhoto() {
-            document.getElementById('ocrResultBox').style.display = 'none';
-            document.getElementById('ocrStatus').textContent = '';
-            const canvas = document.getElementById('capturedCanvas');
-            const video = document.getElementById('cameraPreview');
-            canvas.style.display = 'none';
-            video.style.display = 'block';
-            resetModalBtns();
-            // Restart camera
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } })
-                .then(stream => { cameraStream = stream; video.srcObject = stream; });
-        }
-
-        function useOcrResult() {
-            document.getElementById('meterReading').value = ocrResult;
-            closeCamera();
-            showToast(`📷 Reading captured: ${ocrResult}`);
-        }
-
-        // File input fallback (iPad photo picker)
-        function handleFileInput(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const modal = document.getElementById('cameraModal');
-            const canvas = document.getElementById('capturedCanvas');
-            const video = document.getElementById('cameraPreview');
-            modal.classList.add('active');
-            video.style.display = 'none';
-            canvas.style.display = 'block';
-            document.getElementById('ocrStatus').textContent = '🔍 Reading meter…';
-            document.getElementById('ocrResultBox').style.display = 'none';
-            document.getElementById('modalBtns').innerHTML = `<button class="btn-modal btn-cancel" onclick="closeCamera()">✕ Cancel</button>`;
-
-            const img = new Image();
-            img.onload = async () => {
-                canvas.width = img.width;
-                canvas.height = img.height;
-                canvas.getContext('2d').drawImage(img, 0, 0);
-
-                try {
-                    const { data: { text } } = await Tesseract.recognize(canvas, 'eng', {
-                        logger: m => { if (m.status === 'recognizing text') document.getElementById('ocrStatus').textContent = `🔍 ${Math.round(m.progress * 100)}% scanned…`; }
-                    });
-                    const digits = text.replace(/[^0-9]/g, '');
-                    ocrResult = digits;
-                    document.getElementById('ocrStatus').textContent = digits ? '' : '⚠️ No numbers detected';
-                    document.getElementById('ocrResultBox').style.display = digits ? 'block' : 'none';
-                    document.getElementById('ocrResultValue').textContent = digits || '—';
-                    document.getElementById('modalBtns').innerHTML = digits
-                        ? `<button class="btn-modal btn-use" onclick="useOcrResult()">✅ Use ${digits}</button>
-                           <button class="btn-modal btn-cancel" onclick="closeCamera()">✕ Cancel</button>`
-                        : `<button class="btn-modal btn-cancel" onclick="closeCamera()">✕ Cancel</button>`;
-                } catch (e) {
-                    document.getElementById('ocrStatus').textContent = '❌ OCR failed';
-                }
-            };
-            img.src = URL.createObjectURL(file);
-            event.target.value = '';
-        }
-
-        // ── Export ────────────────────────────────────────────────
+// ── Export ────────────────────────────────────────────────
         function exportCSV() {
             const readings = getReadings();
             if (!readings.length) { showToast('⚠️ No readings to export', true); return; }
