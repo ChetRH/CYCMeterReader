@@ -291,7 +291,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.8 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.9 &nbsp;2/19/2026</div>
 
 
 <script>
@@ -475,35 +475,31 @@
         renderTable();
 
         // ── Microsoft / OneDrive Sync ─────────────────────────────
+        const EXCEL_PATH = '/Dock Operations - General/Meter Reading/CYC Dock Meter Reading.xlsx';
+        const GRAPH_SCOPES = ['Files.ReadWrite', 'User.Read'];
+        let msalInstance = null;
+        let msalAccount = null;
+
         // Dynamically load MSAL then initialize
         (function loadMSAL() {
             const s = document.createElement('script');
             s.src = 'https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js';
-            s.onload = initMSAL;
+            s.onload = function() {
+                msalInstance = new msal.PublicClientApplication({
+                    auth: {
+                        clientId: '7df5213e-e0a0-4fff-ad01-69e83d7cb6f5',
+                        authority: 'https://login.microsoftonline.com/common',
+                        redirectUri: window.location.origin + window.location.pathname
+                    },
+                    cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true }
+                });
+                const accounts = msalInstance.getAllAccounts();
+                if (accounts.length > 0) msalAccount = accounts[0];
+                updateLoginUI();
+            };
             s.onerror = () => showToast('❌ Could not load Microsoft login library', true);
             document.head.appendChild(s);
         })();
-
-        function initMSAL() {
-        const MSAL_CONFIG = {
-            auth: {
-                clientId: '7df5213e-e0a0-4fff-ad01-69e83d7cb6f5',
-                authority: 'https://login.microsoftonline.com/common',
-                redirectUri: window.location.origin + window.location.pathname
-            },
-            cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true }
-        };
-        const EXCEL_PATH = '/Dock Operations - General/Meter Reading/CYC Dock Meter Reading.xlsx';
-        const GRAPH_SCOPES = ['Files.ReadWrite', 'User.Read'];
-
-        const msalInstance = new msal.PublicClientApplication(MSAL_CONFIG);
-        let msalAccount = null;
-
-        // Check for already-signed-in account
-        const accounts = msalInstance.getAllAccounts();
-        if (accounts.length > 0) { msalAccount = accounts[0]; }
-        updateLoginUI();
-        } // end initMSAL
 
         function updateLoginUI() {
             const label = document.getElementById('msUserLabel');
@@ -523,6 +519,7 @@
         }
 
         async function msLogin() {
+            if (!msalInstance) { showToast('❌ Login library not ready yet', true); return; }
             try {
                 const resp = await msalInstance.loginPopup({ scopes: GRAPH_SCOPES });
                 msalAccount = resp.account;
@@ -554,6 +551,7 @@
         }
 
         async function syncToOneDrive() {
+            if (!msalInstance || !msalAccount) { showToast('⚠️ Please sign in first', true); return; }
             const readings = getReadings();
             if (!readings.length) { showToast('⚠️ No readings to sync', true); return; }
 
@@ -565,8 +563,6 @@
                 const token = await getToken();
                 const headers = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
 
-                // Get the OneDrive for Business / personal drive item for the file
-                // First try SharePoint/OneDrive for the Capital Yacht Club tenant
                 const driveRes = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:${EXCEL_PATH}`, { headers });
                 if (!driveRes.ok) {
                     const err = await driveRes.json();
@@ -575,19 +571,16 @@
                 const driveItem = await driveRes.json();
                 const fileId = driveItem.id;
 
-                // Get or create the Sheet1 worksheet and clear it first
                 const wsRes = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${fileId}/workbook/worksheets`, { headers });
                 const wsData = await wsRes.json();
                 const sheetName = wsData.value[0].name;
 
-                // Build rows: header + sorted data
                 const sorted = [...readings].sort((a, b) => a.meterId.localeCompare(b.meterId));
                 const rows = [
                     ['Slip', 'Previous Reading', 'Current Reading', 'Usage', 'Date', 'Time'],
                     ...sorted.map(r => [r.meterId, r.prevReading || '', r.reading, r.usage || '', r.date, r.time])
                 ];
 
-                // Write to worksheet range
                 const range = `A1:F${rows.length}`;
                 const updateRes = await fetch(
                     `https://graph.microsoft.com/v1.0/me/drive/items/${fileId}/workbook/worksheets('${sheetName}')/range(address='${range}')`,
