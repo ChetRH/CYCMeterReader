@@ -298,9 +298,9 @@
                     <button class="dock-btn" id="dockB" onclick="setDock('B')">B</button>
                     <button class="dock-btn" id="dockC" onclick="setDock('C')">C</button>
                 </div>
-                <button class="slip-nav-btn" id="prevSlipBtn" onclick="prevSlip()" title="Previous slip">&#8592;</button>
+                <button class="slip-nav-btn" id="prevSlipBtn" onclick="saveAndNavigate(prevSlip)" title="Previous slip">&#8592;</button>
                 <div id="currentSlipDisplay" style="font-size:2.4rem; font-weight:bold; color:#ffe066; letter-spacing:3px; flex:1; text-align:center;">A01</div>
-                <button class="slip-nav-btn" id="nextSlipBtn" onclick="nextSlip()" title="Next slip">&#8594;</button>
+                <button class="slip-nav-btn" id="nextSlipBtn" onclick="saveAndNavigate(nextSlip)" title="Next slip">&#8594;</button>
             </div>
             <div class="progress-bar-wrap">
                 <div class="progress-bar" id="progressBar" style="width:0%"></div>
@@ -349,7 +349,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.4 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.5 &nbsp;2/19/2026</div>
 
 
 <script>
@@ -378,6 +378,18 @@
             const isLast  = currentDock === DOCKS[DOCKS.length - 1] && currentSlip === MAX_SLIP;
             document.getElementById('prevSlipBtn').disabled = isFirst;
             document.getElementById('nextSlipBtn').disabled = isLast;
+        }
+
+        function saveAndNavigate(moveFn) {
+            const curr = document.getElementById('meterReading').value.trim();
+            if (curr) saveReading(true, moveFn); // auto-save then move
+            else {
+                // nothing to save — just clear and move
+                document.getElementById('slipNotes').value = '';
+                document.getElementById('meterReading').value = '';
+                document.getElementById('usageDisplay').style.display = 'none';
+                moveFn();
+            }
         }
 
         function prevSlip() {
@@ -490,7 +502,8 @@
         }
 
         // ── Save reading ──────────────────────────────────────────
-        function saveReading() {
+        // navFn: optional function to call instead of advanceSlip (used by arrow nav)
+        function saveReading(skipAutoAdvance = false, navFn = null) {
             const curr = document.getElementById('meterReading').value.trim();
             if (!curr) { showToast('⚠️ Please enter a reading', true); document.getElementById('meterReading').focus(); return; }
 
@@ -509,14 +522,18 @@
                 time: now.toLocaleTimeString()
             };
             const readings = getReadings();
-            readings.unshift(entry);
+            // Replace existing entry for this slip if already saved this session
+            const existingIdx = readings.findIndex(r => r.meterId === entry.meterId);
+            if (existingIdx >= 0) readings[existingIdx] = entry;
+            else readings.unshift(entry);
             saveReadings(readings);
             renderTable();
             showToast(`✅ ${entry.meterId} saved!${usage !== '' ? ' Usage: ' + usage : ''}${notes ? ' 📝' : ''}`);
             document.getElementById('meterReading').value = '';
             document.getElementById('slipNotes').value = '';
             document.getElementById('usageDisplay').style.display = 'none';
-            advanceSlip();
+            if (navFn) navFn();
+            else advanceSlip();
             document.getElementById('meterReading').focus();
         }
 
