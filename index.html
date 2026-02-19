@@ -291,7 +291,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 2.5 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 2.6 &nbsp;2/19/2026</div>
 
 
 <script>
@@ -586,7 +586,7 @@
                 );
                 const drivesData = await drivesRes.json();
                 const siteDrives = drivesData.value || [];
-                console.log('Site drives:', siteDrives.map(d => d.name + ' (' + d.driveType + ')'));
+                // find Documents library
 
                 // Step 3: Search each drive for the Excel file by name
                 let fileId = null;
@@ -598,12 +598,10 @@
                     );
                     if (!searchRes.ok) continue;
                     const searchData = await searchRes.json();
-                    console.log(`Drive "${drive.name}" search results:`, (searchData.value || []).map(f => f.name));
                     const found = (searchData.value || []).find(f => f.name === EXCEL_FILE);
                     if (found) {
                         fileId = found.id;
                         driveId = drive.id;
-                        console.log('Found file in drive:', drive.name);
                         break;
                     }
                 }
@@ -615,12 +613,25 @@
 
                 const baseUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}`;
 
-                // Step 4: Get worksheet name
-                const wsRes = await fetch(`${baseUrl}/workbook/worksheets`, { headers });
+                // Step 4: Create a workbook session (required for SharePoint-hosted xlsx)
+                const sessionRes = await fetch(`${baseUrl}/workbook/createSession`, {
+                    method: 'POST', headers,
+                    body: JSON.stringify({ persistChanges: true })
+                });
+                if (!sessionRes.ok) {
+                    const e = await sessionRes.json();
+                    throw new Error('Could not open workbook session: ' + (e.error?.message || sessionRes.status));
+                }
+                const sessionData = await sessionRes.json();
+                const sessionHeaders = { ...headers, 'workbook-session-id': sessionData.id };
+
+                // Step 5: Get worksheet name
+                const wsRes = await fetch(`${baseUrl}/workbook/worksheets`, { headers: sessionHeaders });
                 const wsData = await wsRes.json();
+                if (!wsData.value || !wsData.value.length) throw new Error('No worksheets found in workbook');
                 const sheetName = wsData.value[0].name;
 
-                // Step 5: Write data
+                // Step 6: Write data
                 const sorted = [...readings].sort((a, b) => a.meterId.localeCompare(b.meterId));
                 const rows = [
                     ['Slip', 'Previous Reading', 'Current Reading', 'Usage', 'Date', 'Time'],
@@ -630,13 +641,16 @@
                 const range = `A1:F${rows.length}`;
                 const updateRes = await fetch(
                     `${baseUrl}/workbook/worksheets('${sheetName}')/range(address='${range}')`,
-                    { method: 'PATCH', headers, body: JSON.stringify({ values: rows }) }
+                    { method: 'PATCH', headers: sessionHeaders, body: JSON.stringify({ values: rows }) }
                 );
 
                 if (!updateRes.ok) {
                     const err = await updateRes.json();
                     throw new Error(err.error?.message || 'Failed to write to Excel');
                 }
+
+                // Close the session
+                await fetch(`${baseUrl}/workbook/closeSession`, { method: 'POST', headers: sessionHeaders });
 
                 showToast(`☁️ Synced ${sorted.length} rows to SharePoint!`);
             } catch (e) {
