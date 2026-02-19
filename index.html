@@ -291,7 +291,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 2.1 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 2.2 &nbsp;2/19/2026</div>
 
 
 <script>
@@ -564,15 +564,33 @@
                 const token = await getToken();
                 const headers = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
 
-                const driveRes = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:${EXCEL_PATH}`, { headers });
-                if (!driveRes.ok) {
-                    const err = await driveRes.json();
-                    throw new Error(err.error?.message || 'File not found on OneDrive');
-                }
-                const driveItem = await driveRes.json();
-                const fileId = driveItem.id;
+                // Search all drives for the file (handles both personal and org OneDrive)
+                let fileId = null;
+                let driveId = null;
 
-                const wsRes = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${fileId}/workbook/worksheets`, { headers });
+                // Try personal OneDrive first
+                const driveRes = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:${EXCEL_PATH}`, { headers });
+                if (driveRes.ok) {
+                    const item = await driveRes.json();
+                    fileId = item.id;
+                    driveId = null; // use default me/drive
+                } else {
+                    // Try searching across all drives
+                    const searchRes = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root/search(q='CYC Dock Meter Reading')`, { headers });
+                    if (!searchRes.ok) throw new Error('File not found in any OneDrive');
+                    const searchData = await searchRes.json();
+                    const found = searchData.value?.find(f => f.name === 'CYC Dock Meter Reading.xlsx');
+                    if (!found) throw new Error('CYC Dock Meter Reading.xlsx not found');
+                    fileId = found.id;
+                    // Extract driveId from parentReference
+                    driveId = found.parentReference?.driveId;
+                }
+
+                const baseUrl = driveId
+                    ? `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}`
+                    : `https://graph.microsoft.com/v1.0/me/drive/items/${fileId}`;
+
+                const wsRes = await fetch(`${baseUrl}/workbook/worksheets`, { headers });
                 const wsData = await wsRes.json();
                 const sheetName = wsData.value[0].name;
 
@@ -584,7 +602,7 @@
 
                 const range = `A1:F${rows.length}`;
                 const updateRes = await fetch(
-                    `https://graph.microsoft.com/v1.0/me/drive/items/${fileId}/workbook/worksheets('${sheetName}')/range(address='${range}')`,
+                    `${baseUrl}/workbook/worksheets('${sheetName}')/range(address='${range}')`,
                     { method: 'PATCH', headers, body: JSON.stringify({ values: rows }) }
                 );
 
