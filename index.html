@@ -256,22 +256,23 @@
         }
 
         .slip-nav-btn {
-            background: #0f3460;
-            border: 2px solid #1a4a80;
-            border-radius: 10px;
-            color: #4fc3f7;
-            font-size: 1.6rem;
-            width: 48px;
-            height: 48px;
+            background: linear-gradient(135deg, #0288d1, #0f3460);
+            border: 2px solid #4fc3f7;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 2rem;
+            width: 56px;
+            height: 56px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background 0.15s, border-color 0.15s;
+            transition: background 0.15s, transform 0.1s;
             flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(79,195,247,0.3);
         }
-        .slip-nav-btn:active { background: #0288d1; border-color: #4fc3f7; }
-        .slip-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        .slip-nav-btn:active { transform: scale(0.92); background: linear-gradient(135deg, #4fc3f7, #0288d1); }
+        .slip-nav-btn:disabled { opacity: 0.2; cursor: not-allowed; box-shadow: none; }
     </style>
 </head>
 <body>
@@ -292,12 +293,14 @@
     <div class="card">
         <div class="form-group">
             <label>Current Slip</label>
-            <div style="display:flex; gap:12px; align-items:center;">
-                <div style="display:flex; gap:8px;">
-                    <button class="dock-btn" id="dockA" onclick="setDock('A')">A</button>
-                    <button class="dock-btn" id="dockB" onclick="setDock('B')">B</button>
-                    <button class="dock-btn" id="dockC" onclick="setDock('C')">C</button>
-                </div>
+            <!-- Dock selector row -->
+            <div style="display:flex; gap:8px; margin-bottom:10px;">
+                <button class="dock-btn" id="dockA" onclick="setDock('A')">A</button>
+                <button class="dock-btn" id="dockB" onclick="setDock('B')">B</button>
+                <button class="dock-btn" id="dockC" onclick="setDock('C')">C</button>
+            </div>
+            <!-- Slip nav row -->
+            <div style="display:flex; gap:8px; align-items:center; width:100%;">
                 <button class="slip-nav-btn" id="prevSlipBtn" onclick="saveAndNavigate(prevSlip)" title="Previous slip">&#8592;</button>
                 <div id="currentSlipDisplay" style="font-size:2.4rem; font-weight:bold; color:#ffe066; letter-spacing:3px; flex:1; text-align:center;">A01</div>
                 <button class="slip-nav-btn" id="nextSlipBtn" onclick="saveAndNavigate(nextSlip)" title="Next slip">&#8594;</button>
@@ -349,7 +352,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.5 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.6 &nbsp;2/19/2026</div>
 
 
 <script>
