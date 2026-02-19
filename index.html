@@ -288,7 +288,7 @@
         </div>
         <div class="form-group">
             <label>Previous Reading</label>
-            <input type="number" id="prevReading" placeholder="auto-filled" inputmode="numeric" autocomplete="off" style="opacity:0.7;">
+            <input type="number" id="prevReading" placeholder="auto-filled" inputmode="numeric" autocomplete="off" readonly style="opacity:0.7; cursor:default;">
         </div>
         <div class="form-group">
             <label>Current Reading</label>
@@ -333,11 +333,12 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 2.8 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.0 &nbsp;2/19/2026</div>
 
 
 <script>
         const STORAGE_KEY = 'meter_readings';
+        const BASELINE_KEY = 'meter_baseline'; // slip -> last known reading from SharePoint
         const DOCKS = ['A', 'B', 'C'];
         const MAX_SLIP = 40;
 
@@ -384,15 +385,31 @@
             autoFillPrev();
         }
 
+        // ── Baseline (SharePoint previous readings) ───────────────
+        function getBaseline() { return JSON.parse(localStorage.getItem(BASELINE_KEY) || '{}'); }
+        function saveBaseline(b) { localStorage.setItem(BASELINE_KEY, JSON.stringify(b)); }
+
         // ── Auto-fill previous reading ────────────────────────────
         function autoFillPrev() {
             const id = slipId(currentDock, currentSlip);
             const readings = getReadings();
             const last = readings.find(r => r.meterId === id);
+            const baseline = getBaseline();
             const prevEl = document.getElementById('prevReading');
-            prevEl.value = last ? last.reading : '';
-            prevEl.style.opacity = last ? '1' : '0.7';
-            prevEl.placeholder = last ? '' : 'no prior reading';
+            // Priority: local saved reading > SharePoint baseline > nothing
+            if (last) {
+                prevEl.value = last.reading;
+                prevEl.style.opacity = '1';
+                prevEl.placeholder = '';
+            } else if (baseline[id] !== undefined) {
+                prevEl.value = baseline[id];
+                prevEl.style.opacity = '1';
+                prevEl.placeholder = '';
+            } else {
+                prevEl.value = '';
+                prevEl.style.opacity = '0.7';
+                prevEl.placeholder = 'no prior reading';
+            }
             updateUsageDisplay();
         }
 
@@ -479,6 +496,7 @@
                 saveReadings([]);
                 currentDock = 'A'; currentSlip = 1;
                 updateSlipDisplay();
+                autoFillPrev(); // re-fill from baseline
                 renderTable();
                 showToast('🗑️ All readings cleared');
             }
@@ -546,6 +564,64 @@
             s.onerror = () => showToast('❌ Could not load Microsoft login library', true);
             document.head.appendChild(s);
         })();
+
+        // ── Load baseline from SharePoint on login/reload ─────────
+        async function loadBaselineFromSharePoint() {
+            if (!msalInstance || !msalAccount) return;
+            try {
+                const token = await getToken();
+                const headers = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+
+                const siteRes = await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_HOSTNAME}:${SP_SITE_PATH}`, { headers });
+                if (!siteRes.ok) return;
+                const siteId = (await siteRes.json()).id;
+
+                const drivesRes = await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/drives`, { headers });
+                const siteDrives = (await drivesRes.json()).value || [];
+
+                let fileId = null, driveId = null;
+                for (const drive of siteDrives) {
+                    const searchRes = await fetch(`https://graph.microsoft.com/v1.0/drives/${drive.id}/root/search(q='CYC Dock Meter Reading')`, { headers });
+                    if (!searchRes.ok) continue;
+                    const found = ((await searchRes.json()).value || []).find(f => f.name === EXCEL_FILE);
+                    if (found) { fileId = found.id; driveId = drive.id; break; }
+                }
+                if (!fileId) return;
+
+                const baseUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}`;
+                const sessionRes = await fetch(`${baseUrl}/workbook/createSession`, {
+                    method: 'POST', headers, body: JSON.stringify({ persistChanges: false })
+                });
+                if (!sessionRes.ok) return;
+                const sessionHeaders = { ...headers, 'workbook-session-id': (await sessionRes.json()).id };
+
+                const wsData = await (await fetch(`${baseUrl}/workbook/worksheets`, { headers: sessionHeaders })).json();
+                const sheetName = wsData.value[0].name;
+                const rangeRes = await fetch(
+                    `${baseUrl}/workbook/worksheets('${sheetName}')/range(address='A1:C122')`,
+                    { headers: sessionHeaders }
+                );
+                await fetch(`${baseUrl}/workbook/closeSession`, { method: 'POST', headers: sessionHeaders });
+
+                if (!rangeRes.ok) return;
+                const rangeData = await rangeRes.json();
+                const rows = rangeData.values || [];
+
+                // Build baseline map: slip -> current reading (col C)
+                const baseline = {};
+                for (let i = 1; i < rows.length; i++) {
+                    const [slip, , curr] = rows[i];
+                    if (slip && curr !== '' && curr !== null) baseline[slip] = curr;
+                }
+                if (Object.keys(baseline).length > 0) {
+                    saveBaseline(baseline);
+                    autoFillPrev();
+                }
+            } catch (e) {
+                // Silent fail — baseline load is best-effort
+                console.warn('Baseline load failed:', e.message);
+            }
+        }
 
         function toggleAdmin() {
             const panel = document.getElementById('adminPanel');
@@ -633,6 +709,7 @@
                 btn.textContent = 'Sign Out';
                 btn.onclick = msLogout;
                 syncBtn.disabled = false;
+                loadBaselineFromSharePoint(); // pull latest readings as prev baseline
             } else {
                 label.textContent = 'Not signed in to Microsoft';
                 btn.textContent = 'Sign In';
@@ -798,6 +875,11 @@
 
                 // Close the session
                 await fetch(`${baseUrl}/workbook/closeSession`, { method: 'POST', headers: sessionHeaders });
+
+                // Update local baseline so prev readings reflect what's now in SharePoint
+                const newBaseline = {};
+                sorted.forEach(r => { newBaseline[r.meterId] = r.reading; });
+                saveBaseline(newBaseline);
 
                 showToast(`☁️ Synced ${sorted.length} slips to SharePoint!`);
             } catch (e) {
