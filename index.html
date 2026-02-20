@@ -385,7 +385,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 0.4 &nbsp;2/20/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 0.5 &nbsp;2/20/2026</div>
 
 
 <script>
@@ -513,16 +513,16 @@
             const currEl = document.getElementById('meterReading');
             const notesEl = document.getElementById('slipNotes');
 
-            // Priority: local saved reading > SharePoint baseline > nothing
+            // Priority: local saved reading > Electricity Report baseline > nothing
             if (last) {
-                prevEl.value = last.reading;
+                prevEl.value = formatPrevDisplay(last.reading);
                 prevEl.style.opacity = '1';
                 prevEl.placeholder = '';
                 // Restore the saved current reading and notes so user can review/edit
-                currEl.value = last.reading;
+                currEl.value = '';
                 notesEl.value = last.notes || '';
             } else if (baseline[id] !== undefined) {
-                prevEl.value = baseline[id];
+                prevEl.value = formatPrevDisplay(baseline[id]);
                 prevEl.style.opacity = '1';
                 prevEl.placeholder = '';
                 currEl.value = '';
@@ -541,6 +541,21 @@
         function getReadings() { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
         function saveReadings(r) { localStorage.setItem(STORAGE_KEY, JSON.stringify(r)); }
 
+        // ── Meter reading helpers ─────────────────────────────────
+        // Trim the last digit before saving (meters record to nearest 10)
+        function trimReading(val) {
+            const s = val.toString().trim();
+            return s.length > 0 ? s.slice(0, -1) : s; // drop last digit
+        }
+        // Display a stored value as 6 digits: pad leading zeros to 5, append trailing 0
+        // e.g. 4510 → "045100",  12345 → "123450",  999 → "009990"
+        function formatPrevDisplay(val) {
+            if (val === '' || val === null || val === undefined) return '';
+            const s = val.toString().trim().replace(/\D/g, ''); // digits only
+            if (s === '') return '';
+            return s.padStart(5, '0') + '0';
+        }
+
         // ── Toast ─────────────────────────────────────────────────
         function showToast(msg, isError = false) {
             const t = document.getElementById('toast');
@@ -552,8 +567,12 @@
 
         // ── Live usage display ────────────────────────────────────
         function updateUsageDisplay() {
-            const prev = parseFloat(document.getElementById('prevReading').value);
-            const curr = parseFloat(document.getElementById('meterReading').value);
+            // prevReading shows 6-digit display format — strip trailing 0 for math
+            const prevDisplay = document.getElementById('prevReading').value.trim();
+            const prev = parseFloat(prevDisplay.length > 0 ? prevDisplay.slice(0, -1) : '');
+            // currRaw is 6 digits; trim last digit for comparison
+            const currRaw = document.getElementById('meterReading').value.trim();
+            const curr = parseFloat(currRaw.length === 6 ? trimReading(currRaw) : currRaw);
             const box = document.getElementById('usageDisplay');
             const val = document.getElementById('usageValue');
             if (!isNaN(prev) && !isNaN(curr) && curr >= prev) {
@@ -573,17 +592,22 @@
         // ── Save reading ──────────────────────────────────────────
         // navFn: optional function to call instead of advanceSlip (used by arrow nav)
         function saveReading(skipAutoAdvance = false, navFn = null) {
-            const curr = document.getElementById('meterReading').value.trim();
-            if (!curr) { showToast('⚠️ Please enter a reading', true); document.getElementById('meterReading').focus(); return; }
+            const currRaw = document.getElementById('meterReading').value.trim();
+            if (!currRaw) { showToast('⚠️ Please enter a reading', true); document.getElementById('meterReading').focus(); return; }
 
             // Must be exactly 6 digits
-            if (!/^\d{6}$/.test(curr)) {
+            if (!/^\d{6}$/.test(currRaw)) {
                 showToast('⚠️ Reading must be exactly 6 digits', true);
                 document.getElementById('meterReading').focus();
                 return;
             }
 
-            const prev = document.getElementById('prevReading').value.trim();
+            // Trim last digit before saving (meters record to nearest 10)
+            const curr = trimReading(currRaw); // 5-digit stored value
+
+            // prev display is 6-digit formatted — strip trailing 0 to get stored 5-digit value for math
+            const prevDisplay = document.getElementById('prevReading').value.trim();
+            const prev = prevDisplay.length > 0 ? prevDisplay.slice(0, -1) : ''; // stored 5-digit value
 
             // Warn if current reading is less than previous
             if (prev !== '' && !isNaN(prev) && !isNaN(curr) && parseFloat(curr) < parseFloat(prev)) {
@@ -599,8 +623,8 @@
             const now = new Date();
             const entry = {
                 meterId: currentSlipId(),
-                prevReading: prev,
-                reading: curr,
+                prevReading: prev,   // stored as 5-digit value
+                reading: curr,       // stored as 5-digit value (last digit trimmed)
                 usage: usage,
                 notes: notes,
                 date: now.toLocaleDateString(),
