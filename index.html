@@ -356,7 +356,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.8 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.9 &nbsp;2/19/2026</div>
 
 
 <script>
@@ -531,6 +531,15 @@
             if (!curr) { showToast('⚠️ Please enter a reading', true); document.getElementById('meterReading').focus(); return; }
 
             const prev = document.getElementById('prevReading').value.trim();
+
+            // Warn if current reading is less than previous
+            if (prev !== '' && !isNaN(prev) && !isNaN(curr) && parseFloat(curr) < parseFloat(prev)) {
+                if (!confirm(`⚠️ Current reading (${curr}) is LESS than previous (${prev}).\n\nIs this correct?`)) {
+                    document.getElementById('meterReading').focus();
+                    return;
+                }
+            }
+
             const usage = (prev !== '' && !isNaN(prev) && !isNaN(curr)) ? (parseFloat(curr) - parseFloat(prev)).toFixed(0) : '';
             const notes = document.getElementById('slipNotes').value.trim();
 
