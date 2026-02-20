@@ -385,7 +385,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 0.2 &nbsp;2/20/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 0.3 &nbsp;2/20/2026</div>
 
 
 <script>
@@ -770,10 +770,10 @@
             if (!msalInstance || !msalAccount) { showToast('⚠️ Please sign in first', true); return; }
 
             // Prompt for rate
-            const input = prompt('Enter PEPCO KWH Rate (e.g. 0.18):');
+            const input = prompt('Enter PEPCO KWH Rate (e.g. 0.1809):');
             if (input === null) return; // cancelled
             const rate = parseFloat(input.trim());
-            if (isNaN(rate) || rate <= 0) { showToast('⚠️ Invalid rate — please enter a number like 0.18', true); return; }
+            if (isNaN(rate) || rate <= 0) { showToast('⚠️ Invalid rate — please enter a number like 0.1809', true); return; }
 
             const btn = document.getElementById('kwhBtn');
             btn.textContent = '⏳ Saving rate…';
@@ -831,7 +831,7 @@
                     throw new Error(err?.error?.message || 'Failed to write to spreadsheet');
                 }
 
-                showToast(`⚡ Rate $${rate.toFixed(2)}/KWH saved to Electricity Report!`);
+                showToast(`⚡ Rate $${rate}/KWH saved to Electricity Report!`);
 
             } catch (e) {
                 showToast('❌ ' + e.message, true);
