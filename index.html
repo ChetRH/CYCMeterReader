@@ -364,7 +364,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.1 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.2 &nbsp;2/19/2026</div>
 
 
 <script>
@@ -928,8 +928,11 @@
         }
 
         // ── Voice input ───────────────────────────────────────────
+        // Uses continuous mode + auto-restart on end so it stays open until
+        // the user taps Stop or a valid 6-digit number is captured.
         let voiceRecognition = null;
         let voiceListening = false;
+        let voiceGotResult = false; // flag: don't restart if we already captured a number
 
         (function initVoice() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -943,40 +946,58 @@
             const rec = new SpeechRecognition();
             rec.lang = 'en-US';
             rec.interimResults = false;
-            rec.maxAlternatives = 3;
-            rec.continuous = false;
+            rec.maxAlternatives = 5;
+            rec.continuous = true; // keep mic open across pauses
 
             rec.onresult = (e) => {
-                // Try each alternative until we get a clean 6-digit number
-                let best = null;
-                for (let i = 0; i < e.results[0].length; i++) {
-                    const raw = e.results[0][i].transcript.trim();
-                    // Strip spaces/commas, convert word numbers if needed
-                    const digits = raw.replace(/[\s,]/g, '');
-                    if (/^\d{6}$/.test(digits)) { best = digits; break; }
-                    // Also try stripping any non-digits
-                    const stripped = raw.replace(/\D/g, '');
-                    if (/^\d{6}$/.test(stripped)) { best = stripped; break; }
+                // Walk all new results (continuous mode accumulates them)
+                for (let ri = e.resultIndex; ri < e.results.length; ri++) {
+                    if (!e.results[ri].isFinal) continue;
+                    // Try each alternative until we find a clean 6-digit number
+                    for (let ai = 0; ai < e.results[ri].length; ai++) {
+                        const raw = e.results[ri][ai].transcript.trim();
+                        const digits = raw.replace(/[\s,]/g, '');
+                        const stripped = raw.replace(/\D/g, '');
+                        const best = /^\d{6}$/.test(digits) ? digits
+                                   : /^\d{6}$/.test(stripped) ? stripped : null;
+                        if (best) {
+                            voiceGotResult = true;
+                            document.getElementById('meterReading').value = best;
+                            updateUsageDisplay();
+                            showToast(`🎤 Got: ${best}`);
+                            stopVoice();
+                            return;
+                        }
+                    }
+                    // Heard something but couldn't parse — show feedback and keep listening
+                    const heard = e.results[ri][0].transcript;
+                    showToast(`🎤 Heard "${heard}" — listening…`, false);
                 }
-                if (best) {
-                    document.getElementById('meterReading').value = best;
-                    updateUsageDisplay();
-                    showToast(`🎤 Got: ${best}`);
-                } else {
-                    const heard = e.results[0][0].transcript;
-                    showToast(`⚠️ Heard "${heard}" — not a 6-digit number`, true);
-                }
-                stopVoice();
             };
 
             rec.onerror = (e) => {
-                if (e.error !== 'no-speech' && e.error !== 'aborted') {
-                    showToast('🎤 ' + (e.error === 'not-allowed' ? 'Microphone permission denied' : 'Voice error: ' + e.error), true);
-                }
+                // 'no-speech' is normal on mobile (short silence timeout) — just restart
+                if (e.error === 'no-speech') return; // onend will restart automatically
+                if (e.error === 'aborted') return;    // intentional stop
+                showToast('🎤 ' + (e.error === 'not-allowed'
+                    ? 'Microphone permission denied'
+                    : 'Voice error: ' + e.error), true);
                 stopVoice();
             };
 
-            rec.onend = () => stopVoice();
+            // Auto-restart: mobile browsers stop after a short silence even in continuous mode.
+            // As long as we're still supposed to be listening, kick it back on.
+            rec.onend = () => {
+                if (voiceListening && !voiceGotResult) {
+                    try { rec.start(); } catch(e) { stopVoice(); }
+                } else {
+                    // Clean up visual state if something externally ended it
+                    voiceListening = false;
+                    const micBtn = document.getElementById('micBtn');
+                    micBtn.classList.remove('listening');
+                    micBtn.textContent = '🎤';
+                }
+            };
 
             voiceRecognition = rec;
         })();
@@ -988,11 +1009,13 @@
             micBtn.classList.add('listening');
             micBtn.textContent = '⏹️';
             voiceListening = true;
+            voiceGotResult = false;
             try { voiceRecognition.start(); } catch(e) { stopVoice(); }
         }
 
         function stopVoice() {
             voiceListening = false;
+            voiceGotResult = false;
             const micBtn = document.getElementById('micBtn');
             micBtn.classList.remove('listening');
             micBtn.textContent = '🎤';
