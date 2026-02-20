@@ -344,8 +344,8 @@
     <div class="card" id="adminPanel" style="display:none;">
         <div class="section-title">⚙️ Admin</div>
         <p style="color:#aaa; font-size:0.85rem; margin-bottom:16px;">These actions affect the SharePoint spreadsheet directly. Use with caution.</p>
-        <button class="btn-danger-admin" id="resetSheetBtn" onclick="resetSpreadsheet()" disabled>🗑️ Start Clean Spreadsheet</button>
-        <p style="color:#666; font-size:0.8rem; margin-top:8px;">Clears all data from the SharePoint Excel file so you can start a fresh billing cycle. You must be signed in to Microsoft.</p>
+        <button class="btn-danger-admin" id="resetSheetBtn" onclick="resetSpreadsheet()" disabled>📋 Start New Bill Readings</button>
+        <p style="color:#666; font-size:0.8rem; margin-top:8px;">Archives current data to a dated Excel file, then clears the main sheet for a fresh billing cycle. You must be signed in to Microsoft.</p>
     </div>
 
     <!-- Readings count (compact, no full table) -->
@@ -356,7 +356,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 2.6 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 2.7 &nbsp;2/19/2026</div>
 
 
 <script>
@@ -867,7 +867,7 @@
                 console.error('Reset error:', e);
                 showToast('❌ Reset failed: ' + e.message, true);
             } finally {
-                btn.textContent = '🗑️ Start Clean Spreadsheet';
+                btn.textContent = '📋 Start New Bill Readings';
                 btn.disabled = false;
             }
         }
