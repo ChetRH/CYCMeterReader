@@ -385,7 +385,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 0.8 &nbsp;2/20/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 0.9 &nbsp;2/20/2026</div>
 
 
 <script>
@@ -513,24 +513,23 @@
             const currEl = document.getElementById('meterReading');
             const notesEl = document.getElementById('slipNotes');
 
-            // Priority: local saved reading > Electricity Report baseline > nothing
-            if (last) {
-                prevEl.value = formatPrevDisplay(last.reading);
-                prevEl.style.opacity = '1';
-                prevEl.placeholder = '';
-                // Show saved current reading in field so it persists until Start New Bill Readings
-                currEl.value = formatPrevDisplay(last.reading);
-                notesEl.value = last.notes || '';
-            } else if (baseline[id] !== undefined) {
+            // Previous reading always comes from baseline (Electricity Report) — never changes
+            // until Start New Bill Readings runs. Current reading persists if already saved.
+            if (baseline[id] !== undefined) {
                 prevEl.value = formatPrevDisplay(baseline[id]);
                 prevEl.style.opacity = '1';
                 prevEl.placeholder = '';
-                currEl.value = '';
-                notesEl.value = '';
             } else {
                 prevEl.value = '';
                 prevEl.style.opacity = '0.7';
                 prevEl.placeholder = 'no prior reading';
+            }
+
+            // Current reading: show saved value if exists, otherwise blank for new entry
+            if (last) {
+                currEl.value = formatPrevDisplay(last.reading);
+                notesEl.value = last.notes || '';
+            } else {
                 currEl.value = '';
                 notesEl.value = '';
             }
