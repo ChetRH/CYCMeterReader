@@ -363,9 +363,9 @@
 
     <!-- Actions Card -->
     <div class="card" style="display:flex; flex-direction:column; gap:12px;">
+        <button class="btn-danger-admin" id="resetSheetBtn" onclick="resetSpreadsheet()" disabled>📋 Start New Bill Readings</button>
         <button class="btn-onedrive" id="syncBtn" onclick="syncToOneDrive()" disabled>☁️ Sync to OneDrive Excel</button>
         <button class="btn-clear" onclick="clearAll()">🔄 Start Over / Clear Readings</button>
-        <button class="btn-danger-admin" id="resetSheetBtn" onclick="resetSpreadsheet()" disabled>📋 Start New Bill Readings</button>
         <button class="btn-export" onclick="exportCSV()">📊 Export to CSV (Excel)</button>
     </div>
 
@@ -385,7 +385,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 0.6 &nbsp;2/20/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 0.7 &nbsp;2/20/2026</div>
 
 
 <script>
