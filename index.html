@@ -342,7 +342,9 @@
         <div class="form-group">
             <label>Current Reading</label>
             <div style="display:flex; gap:8px; align-items:center;">
-                <input type="number" id="meterReading" placeholder="6-digit reading" inputmode="numeric" autocomplete="off" autofocus style="flex:1;">
+                <input type="text" id="meterReading" value="000000" inputmode="numeric" autocomplete="off" autofocus
+                    style="flex:1; letter-spacing:4px; font-variant-numeric:tabular-nums;"
+                    readonly>
                 <button class="btn-mic" id="micBtn" onclick="toggleVoice()" title="Speak the meter reading">🎤</button>
             </div>
         </div>
@@ -385,7 +387,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.1 &nbsp;2/20/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.2 &nbsp;2/20/2026</div>
 
 
 <script>
@@ -525,12 +527,12 @@
                 prevEl.placeholder = 'no prior reading';
             }
 
-            // Current reading: show saved value if exists, otherwise blank for new entry
+            // Current reading: show saved value if exists, otherwise reset to 000000
             if (last) {
-                currEl.value = formatPrevDisplay(last.reading);
+                setMeterBuffer(formatPrevDisplay(last.reading));
                 notesEl.value = last.notes || '';
             } else {
-                currEl.value = '';
+                clearMeterField();
                 notesEl.value = '';
             }
             updateUsageDisplay();
@@ -569,9 +571,8 @@
             // prevReading shows 6-digit display format — strip trailing 0 for math
             const prevDisplay = document.getElementById('prevReading').value.trim();
             const prev = parseFloat(prevDisplay.length > 0 ? prevDisplay.slice(0, -1) : '');
-            // currRaw is 6 digits; trim last digit for comparison
-            const currRaw = document.getElementById('meterReading').value.trim();
-            const curr = parseFloat(currRaw.length === 6 ? trimReading(currRaw) : currRaw);
+            // meterBuffer is always 6 digits; trim last digit for comparison
+            const curr = meterBuffer === '000000' ? NaN : parseFloat(trimReading(meterBuffer));
             const box = document.getElementById('usageDisplay');
             const val = document.getElementById('usageValue');
             if (!isNaN(prev) && !isNaN(curr) && curr >= prev) {
@@ -591,15 +592,8 @@
         // ── Save reading ──────────────────────────────────────────
         // navFn: optional function to call instead of advanceSlip (used by arrow nav)
         function saveReading(skipAutoAdvance = false, navFn = null) {
-            const currRaw = document.getElementById('meterReading').value.trim();
-            if (!currRaw) { showToast('⚠️ Please enter a reading', true); document.getElementById('meterReading').focus(); return; }
-
-            // Must be exactly 6 digits
-            if (!/^\d{6}$/.test(currRaw)) {
-                showToast('⚠️ Reading must be exactly 6 digits', true);
-                document.getElementById('meterReading').focus();
-                return;
-            }
+            const currRaw = meterBuffer; // always 6 digits from the buffer
+            if (currRaw === '000000') { showToast('⚠️ Please enter a reading', true); document.getElementById('meterReading').focus(); return; }
 
             // Trim last digit before saving (meters record to nearest 10)
             const curr = trimReading(currRaw); // 5-digit stored value
@@ -684,12 +678,49 @@
             document.getElementById('countBadge').textContent = readings.length;
         }
 
-        // Live usage update on input
-        document.getElementById('meterReading').addEventListener('input', updateUsageDisplay);
-        document.getElementById('prevReading').addEventListener('input', updateUsageDisplay);
+        // ── Calculator-style meter entry ──────────────────────────
+        // Field is readonly — we manage value via keydown.
+        // Digits shift in from the right: 000000 → 000001 → 000012 etc.
+        // Backspace removes last digit (shifts right, prepends 0).
 
-        // Enter key submits
-        document.addEventListener('keydown', e => { if (e.key === 'Enter') saveReading(); });
+        let meterBuffer = '000000'; // internal 6-char digit buffer
+
+        function setMeterBuffer(val) {
+            meterBuffer = val.padStart(6, '0').slice(-6);
+            document.getElementById('meterReading').value = meterBuffer;
+            updateUsageDisplay();
+        }
+
+        function clearMeterField() {
+            setMeterBuffer('000000');
+        }
+
+        document.getElementById('meterReading').addEventListener('keydown', e => {
+            if (e.key >= '0' && e.key <= '9') {
+                e.preventDefault();
+                // Shift left, append new digit, keep last 6
+                const next = (meterBuffer + e.key).slice(-6);
+                setMeterBuffer(next);
+            } else if (e.key === 'Backspace') {
+                e.preventDefault();
+                // Remove last digit, prepend 0
+                const next = '0' + meterBuffer.slice(0, -1);
+                setMeterBuffer(next);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                saveReading();
+            }
+        });
+
+        // Also capture digits from anywhere on the page (for hardware scanners / physical keyboards)
+        document.addEventListener('keydown', e => {
+            const tag = document.activeElement?.tagName;
+            // Only intercept if focus is NOT on another input/textarea/button
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON') return;
+            if (e.key === 'Enter') { saveReading(); return; }
+        });
+
+        document.getElementById('prevReading').addEventListener('input', updateUsageDisplay);
 
         // Init
         updateSlipDisplay();
@@ -1228,8 +1259,7 @@
                                    : /^\d{6}$/.test(stripped) ? stripped : null;
                         if (best) {
                             voiceGotResult = true;
-                            document.getElementById('meterReading').value = best;
-                            updateUsageDisplay();
+                            setMeterBuffer(best); // fills buffer and updates display
                             showToast(`🎤 Got: ${best}`);
                             stopVoice();
                             return;
