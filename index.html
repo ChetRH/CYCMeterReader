@@ -356,7 +356,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 2.1 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 2.2 &nbsp;2/19/2026</div>
 
 
 <script>
@@ -1002,7 +1002,8 @@
                 rows.slice(1).forEach(([slip, , curr]) => { if (slip && curr !== '') newBaseline[slip] = curr; });
                 saveBaseline(newBaseline);
 
-                showToast(`☁️ Synced ${sorted.length} slips to SharePoint!`);
+                const syncedCount = rows.length - 1; // exclude header
+                showToast(`☁️ Synced ${syncedCount} slips to SharePoint!`);
             } catch (e) {
                 console.error('Sync error:', e);
                 showToast('❌ Sync failed: ' + e.message, true);
