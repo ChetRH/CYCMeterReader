@@ -356,7 +356,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 2.5 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 2.6 &nbsp;2/19/2026</div>
 
 
 <script>
@@ -743,17 +743,17 @@
 
         async function resetSpreadsheet() {
             if (!msalInstance || !msalAccount) { showToast('⚠️ Please sign in first', true); return; }
-            if (!confirm('⚠️ This will permanently clear ALL data from the SharePoint Excel file.\n\nAre you sure you want to start a clean spreadsheet?')) return;
+            if (!confirm('⚠️ This will save the current data to a new dated Excel file, then clear the main sheet for a new cycle.\n\nContinue?')) return;
 
             const btn = document.getElementById('resetSheetBtn');
-            btn.textContent = '⏳ Clearing…';
+            btn.textContent = '⏳ Archiving…';
             btn.disabled = true;
 
             try {
                 const token = await getToken();
                 const headers = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
 
-                // Locate the site, drive, and file (same as sync)
+                // Locate the site, drive, and main file
                 const siteRes = await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_HOSTNAME}:${SP_SITE_PATH}`, { headers });
                 if (!siteRes.ok) throw new Error('Could not access SharePoint site');
                 const siteId = (await siteRes.json()).id;
@@ -761,37 +761,98 @@
                 const drivesRes = await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/drives`, { headers });
                 const siteDrives = (await drivesRes.json()).value || [];
 
-                let fileId = null, driveId = null;
+                let fileId = null, driveId = null, fileParentPath = null;
                 for (const drive of siteDrives) {
                     const searchRes = await fetch(`https://graph.microsoft.com/v1.0/drives/${drive.id}/root/search(q='CYC Dock Meter Reading')`, { headers });
                     if (!searchRes.ok) continue;
                     const found = ((await searchRes.json()).value || []).find(f => f.name === EXCEL_FILE);
-                    if (found) { fileId = found.id; driveId = drive.id; break; }
+                    if (found) {
+                        fileId = found.id;
+                        driveId = drive.id;
+                        // Get parent folder path from parentReference
+                        fileParentPath = found.parentReference?.path || null;
+                        break;
+                    }
                 }
                 if (!fileId) throw new Error(`"${EXCEL_FILE}" not found in SharePoint`);
 
                 const baseUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}`;
 
-                // Open session
+                // Open session on main file
                 const sessionRes = await fetch(`${baseUrl}/workbook/createSession`, {
                     method: 'POST', headers, body: JSON.stringify({ persistChanges: true })
                 });
                 if (!sessionRes.ok) throw new Error('Could not open workbook session');
                 const sessionHeaders = { ...headers, 'workbook-session-id': (await sessionRes.json()).id };
 
-                // Get sheet name
+                // Get main sheet name
                 const wsData = await (await fetch(`${baseUrl}/workbook/worksheets`, { headers: sessionHeaders })).json();
+                if (!wsData.value || !wsData.value.length) throw new Error('No worksheets found');
                 const sheetName = wsData.value[0].name;
-                const sheetBase = `${baseUrl}/workbook/worksheets('${sheetName}')`;
+                const sheetBase = `${baseUrl}/workbook/worksheets('${encodeURIComponent(sheetName)}')`;
 
-                // Write just the header row, clear everything else
+                // Step 1: Read current data
+                btn.textContent = '⏳ Reading data…';
+                const readRes = await fetch(`${sheetBase}/range(address='A1:G122')`, { headers: sessionHeaders });
+                if (!readRes.ok) throw new Error('Could not read main sheet');
+                const existingValues = (await readRes.json()).values || [];
+
+                // Find last non-empty row
+                let lastRow = 0;
+                for (let i = existingValues.length - 1; i >= 0; i--) {
+                    if (existingValues[i].some(c => c !== '' && c !== null)) { lastRow = i + 1; break; }
+                }
+
+                // Step 2: Copy main file to a new archive file in the same folder
+                btn.textContent = '⏳ Creating archive file…';
+                const now = new Date();
+                const pad = n => String(n).padStart(2, '0');
+                const dateStamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}${pad(now.getMinutes())}`;
+                const archiveFileName = `CYC Meter Archive ${dateStamp}.xlsx`;
+
+                // Get the parent folder item id
+                const mainItemRes = await fetch(baseUrl, { headers });
+                if (!mainItemRes.ok) throw new Error('Could not get file info');
+                const mainItem = await mainItemRes.json();
+                const parentId = mainItem.parentReference?.id;
+                if (!parentId) throw new Error('Could not determine parent folder');
+
+                // Copy the file to same folder with archive name
+                const copyRes = await fetch(`${baseUrl}/copy`, {
+                    method: 'POST', headers,
+                    body: JSON.stringify({
+                        parentReference: { driveId, id: parentId },
+                        name: archiveFileName
+                    })
+                });
+                if (!copyRes.ok) {
+                    const e = await copyRes.json();
+                    throw new Error('Could not create archive file: ' + (e.error?.message || copyRes.status));
+                }
+
+                // The copy is async — wait for it to complete (poll the monitor URL)
+                const monitorUrl = copyRes.headers.get('Location');
+                if (monitorUrl) {
+                    btn.textContent = '⏳ Waiting for archive…';
+                    for (let i = 0; i < 20; i++) {
+                        await new Promise(r => setTimeout(r, 1500));
+                        const pollRes = await fetch(monitorUrl);
+                        if (!pollRes.ok) break;
+                        const pollData = await pollRes.json();
+                        if (pollData.status === 'completed' || pollData.resourceId) break;
+                        if (pollData.status === 'failed') throw new Error('Archive copy failed');
+                    }
+                }
+
+                // Step 3: Clear main sheet and write fresh header
+                btn.textContent = '⏳ Clearing main sheet…';
                 await fetch(`${sheetBase}/range(address='A1:G122')/clear`,
                     { method: 'POST', headers: sessionHeaders, body: JSON.stringify({ applyTo: 'contents' }) }
                 );
-                await fetch(`${sheetBase}/range(address='A1:G1')`,
-                    { method: 'PATCH', headers: sessionHeaders,
-                      body: JSON.stringify({ values: [['Slip', 'Previous Reading', 'Current Reading', 'Usage', 'Date', 'Time', 'Notes']] }) }
-                );
+                await fetch(`${sheetBase}/range(address='A1:G1')`, {
+                    method: 'PATCH', headers: sessionHeaders,
+                    body: JSON.stringify({ values: [['Slip', 'Previous Reading', 'Current Reading', 'Usage', 'Date', 'Time', 'Notes']] })
+                });
 
                 await fetch(`${baseUrl}/workbook/closeSession`, { method: 'POST', headers: sessionHeaders });
 
@@ -801,7 +862,7 @@
                 autoFillPrev();
                 renderTable();
 
-                showToast('✅ Spreadsheet cleared — ready for new cycle!');
+                showToast(`✅ Archived to "${archiveFileName}" — ready for new cycle!`);
             } catch (e) {
                 console.error('Reset error:', e);
                 showToast('❌ Reset failed: ' + e.message, true);
