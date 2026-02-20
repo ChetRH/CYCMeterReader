@@ -281,7 +281,7 @@
         <img src="CYC Burgee.png" alt="CYC Burgee" style="height:48px;">
         <h1 style="margin-bottom:0;">CYC Meter Reader</h1>
     </div>
-    <p class="subtitle">Docks A, B, C — Slips 01 to 40</p>
+    <p class="subtitle">Docks A · B · C — Odd side out, Even side back</p>
 
     <!-- Microsoft Login Bar -->
     <div class="ms-login-bar" id="msLoginBar">
@@ -356,17 +356,46 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 2.3 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 2.4 &nbsp;2/19/2026</div>
 
 
 <script>
         const STORAGE_KEY = 'meter_readings';
         const BASELINE_KEY = 'meter_baseline'; // slip -> last known reading from SharePoint
         const DOCKS = ['A', 'B', 'C'];
-        const MAX_SLIP = 40;
 
-        let currentDock = 'A';
-        let currentSlip = 1;
+        // ── Physical walk order per dock ──────────────────────────
+        // Odd side = walking out, Even side = walking back
+        // NOTE: Dock C walk order TBD — using sequential fallback until provided
+        const DOCK_WALK = {
+            A: [
+                'A01','A03','A05','A07','A09','A11','A13','A15','A17','A19','A21','A23','A25','A27','A29','A31','A33','A35',
+                'A02','A04','A06','A08','A10','A12','A14','A16','A18','A20','A22','A24','A26','A28','A30'
+            ],
+            B: [
+                'B01','B03','B05','B07','B09','B11','B13','B15','B17','B19','B21','B23','B25','B27','B29',
+                'B02','B04','B06','B08','B10','B12','B14','B16','B18','B20','B22','B24','B26','B28'
+            ],
+            C: [
+                'C01','C03','C05','C07','C09','C11','C13','C15','C17','C19','C21','C23','C25','C27',
+                'C02','C04','C06','C08','C10','C12','C14','C16','C18','C20','C22','C24','C26','C28','C30','C32','C34','C36'
+            ]
+        };
+
+        // Build a flat global walk order across all docks
+        function buildWalkOrder() {
+            const order = [];
+            DOCKS.forEach(d => { (DOCK_WALK[d] || []).forEach(s => order.push(s)); });
+            return order;
+        }
+
+        // ── Current position ──────────────────────────────────────
+        let walkOrder = buildWalkOrder();
+        let walkIndex = 0; // index into walkOrder
+
+        // Derive currentDock and currentSlip from walkIndex for compatibility
+        function currentSlipId() { return walkOrder[walkIndex] || 'A01'; }
+        function currentDockFromIndex() { return currentSlipId()[0]; }
 
 // ── Slip helpers ──────────────────────────────────────────
         function slipId(dock, slip) {
@@ -374,17 +403,16 @@
         }
 
         function updateSlipDisplay() {
-            document.getElementById('currentSlipDisplay').textContent = slipId(currentDock, currentSlip);
-            DOCKS.forEach(d => document.getElementById('dock' + d).classList.toggle('active', d === currentDock));
-            // Progress bar: total 120 slips
-            const dockIdx = DOCKS.indexOf(currentDock);
-            const done = dockIdx * MAX_SLIP + (currentSlip - 1);
-            document.getElementById('progressBar').style.width = `${(done / (DOCKS.length * MAX_SLIP)) * 100}%`;
+            const id = currentSlipId();
+            const dock = id[0];
+            document.getElementById('currentSlipDisplay').textContent = id;
+            DOCKS.forEach(d => document.getElementById('dock' + d).classList.toggle('active', d === dock));
+            // Progress bar
+            const pct = walkOrder.length > 1 ? (walkIndex / (walkOrder.length - 1)) * 100 : 0;
+            document.getElementById('progressBar').style.width = `${pct}%`;
             // Arrow button states
-            const isFirst = currentDock === DOCKS[0] && currentSlip === 1;
-            const isLast  = currentDock === DOCKS[DOCKS.length - 1] && currentSlip === MAX_SLIP;
-            document.getElementById('prevSlipBtn').disabled = isFirst;
-            document.getElementById('nextSlipBtn').disabled = isLast;
+            document.getElementById('prevSlipBtn').disabled = walkIndex === 0;
+            document.getElementById('nextSlipBtn').disabled = walkIndex === walkOrder.length - 1;
         }
 
         function saveAndNavigate(moveFn) {
@@ -400,54 +428,37 @@
         }
 
         function prevSlip() {
-            if (currentSlip > 1) {
-                currentSlip--;
-            } else {
-                const prevDockIdx = DOCKS.indexOf(currentDock) - 1;
-                if (prevDockIdx < 0) return;
-                currentDock = DOCKS[prevDockIdx];
-                currentSlip = MAX_SLIP;
-            }
+            if (walkIndex > 0) walkIndex--;
             updateSlipDisplay();
             autoFillPrev();
             document.getElementById('meterReading').focus();
         }
 
         function nextSlip() {
-            if (currentSlip < MAX_SLIP) {
-                currentSlip++;
-            } else {
-                const nextDockIdx = DOCKS.indexOf(currentDock) + 1;
-                if (nextDockIdx >= DOCKS.length) return;
-                currentDock = DOCKS[nextDockIdx];
-                currentSlip = 1;
-            }
+            if (walkIndex < walkOrder.length - 1) walkIndex++;
             updateSlipDisplay();
             autoFillPrev();
             document.getElementById('meterReading').focus();
         }
 
         function setDock(dock) {
-            currentDock = dock;
-            currentSlip = 1;
+            // Jump to the first slip of the selected dock in walk order
+            const idx = walkOrder.findIndex(s => s[0] === dock);
+            if (idx >= 0) walkIndex = idx;
             updateSlipDisplay();
             autoFillPrev();
             document.getElementById('meterReading').focus();
         }
 
         function advanceSlip() {
-            if (currentSlip < MAX_SLIP) {
-                currentSlip++;
+            if (walkIndex < walkOrder.length - 1) {
+                const prevDock = currentDockFromIndex();
+                walkIndex++;
+                const newDock = currentDockFromIndex();
+                if (newDock !== prevDock) showToast(`📍 Now on Dock ${newDock}`);
             } else {
-                const nextDockIndex = DOCKS.indexOf(currentDock) + 1;
-                if (nextDockIndex < DOCKS.length) {
-                    currentDock = DOCKS[nextDockIndex];
-                    currentSlip = 1;
-                    showToast(`📍 Now on Dock ${currentDock}`);
-                } else {
-                    showToast('🎉 All slips completed!');
-                    return;
-                }
+                showToast('🎉 All slips completed!');
+                return;
             }
             updateSlipDisplay();
             autoFillPrev();
@@ -459,7 +470,7 @@
 
         // ── Auto-fill previous reading + current + notes ──────────
         function autoFillPrev() {
-            const id = slipId(currentDock, currentSlip);
+            const id = currentSlipId();
             const readings = getReadings();
             const last = readings.find(r => r.meterId === id);
             const baseline = getBaseline();
@@ -552,7 +563,7 @@
 
             const now = new Date();
             const entry = {
-                meterId: slipId(currentDock, currentSlip),
+                meterId: currentSlipId(),
                 prevReading: prev,
                 reading: curr,
                 usage: usage,
@@ -602,7 +613,7 @@
             if (!readings.length) { showToast('⚠️ Nothing to clear', true); return; }
             if (confirm(`Delete all ${readings.length} readings? This cannot be undone.`)) {
                 saveReadings([]);
-                currentDock = 'A'; currentSlip = 1;
+                walkIndex = 0;
                 updateSlipDisplay();
                 autoFillPrev(); // re-fill from baseline
                 renderTable();
@@ -946,11 +957,8 @@
                 const newMap = {};
                 readings.forEach(r => { newMap[r.meterId] = r; });
 
-                // Build canonical full slip list A01-C40, merged with any existing Excel slips
-                const canonicalSlips = [];
-                DOCKS.forEach(d => {
-                    for (let s = 1; s <= MAX_SLIP; s++) canonicalSlips.push(slipId(d, s));
-                });
+                // Build canonical slip list from walk order (sorted for Excel output)
+                const canonicalSlips = [...walkOrder];
                 // Add any extra slips only in Excel (e.g. from old data)
                 Object.keys(excelMap).forEach(slip => { if (!canonicalSlips.includes(slip)) canonicalSlips.push(slip); });
                 canonicalSlips.sort();
