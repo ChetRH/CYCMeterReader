@@ -356,7 +356,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 2.2 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 2.3 &nbsp;2/19/2026</div>
 
 
 <script>
@@ -854,7 +854,7 @@
         async function syncToOneDrive() {
             if (!msalInstance || !msalAccount) { showToast('⚠️ Please sign in first', true); return; }
             const readings = getReadings();
-            if (!readings.length) { showToast('⚠️ No readings to sync', true); return; }
+            if (!readings.length) { showToast('⚠️ No new readings to sync', true); return; }
 
             const btn = document.getElementById('syncBtn');
             btn.textContent = '⏳ Syncing…';
