@@ -385,7 +385,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 0.7 &nbsp;2/20/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 0.8 &nbsp;2/20/2026</div>
 
 
 <script>
@@ -518,8 +518,8 @@
                 prevEl.value = formatPrevDisplay(last.reading);
                 prevEl.style.opacity = '1';
                 prevEl.placeholder = '';
-                // Restore the saved current reading and notes so user can review/edit
-                currEl.value = '';
+                // Show saved current reading in field so it persists until Start New Bill Readings
+                currEl.value = formatPrevDisplay(last.reading);
                 notesEl.value = last.notes || '';
             } else if (baseline[id] !== undefined) {
                 prevEl.value = formatPrevDisplay(baseline[id]);
@@ -638,7 +638,6 @@
             saveReadings(readings);
             renderTable();
             showToast(`✅ ${entry.meterId} saved!${usage !== '' ? ' Usage: ' + usage : ''}${notes ? ' 📝' : ''}`);
-            document.getElementById('meterReading').value = '';
             document.getElementById('slipNotes').value = '';
             document.getElementById('usageDisplay').style.display = 'none';
             if (navFn) navFn();
