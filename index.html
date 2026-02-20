@@ -385,7 +385,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 0.5 &nbsp;2/20/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 0.6 &nbsp;2/20/2026</div>
 
 
 <script>
@@ -927,7 +927,7 @@
                     if (existingValues[i].some(c => c !== '' && c !== null)) { lastRow = i + 1; break; }
                 }
 
-                // Step 2: Copy main file to a new archive file in the same folder
+                // Step 2: Copy main file into "Meter Archive" subfolder (create if needed)
                 btn.textContent = '⏳ Creating archive file…';
                 const now = new Date();
                 const pad = n => String(n).padStart(2, '0');
@@ -941,11 +941,58 @@
                 const parentId = mainItem.parentReference?.id;
                 if (!parentId) throw new Error('Could not determine parent folder');
 
-                // Copy the file to same folder with archive name
+                // Find or create "Meter Archive" subfolder inside the parent folder
+                btn.textContent = '⏳ Locating archive folder…';
+                let archiveFolderId = null;
+
+                // Try to get the folder by name
+                const folderCheckRes = await fetch(
+                    `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${parentId}/children?$filter=name eq 'Meter Archive'`,
+                    { headers }
+                );
+                if (folderCheckRes.ok) {
+                    const folderData = await folderCheckRes.json();
+                    const existing = (folderData.value || []).find(i => i.folder && i.name === 'Meter Archive');
+                    if (existing) archiveFolderId = existing.id;
+                }
+
+                // If not found, create it
+                if (!archiveFolderId) {
+                    btn.textContent = '⏳ Creating Meter Archive folder…';
+                    const mkdirRes = await fetch(
+                        `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${parentId}/children`,
+                        {
+                            method: 'POST', headers,
+                            body: JSON.stringify({
+                                name: 'Meter Archive',
+                                folder: {},
+                                '@microsoft.graph.conflictBehavior': 'fail'
+                            })
+                        }
+                    );
+                    if (!mkdirRes.ok) {
+                        // May have failed because it already exists — try fetching again
+                        const retryRes = await fetch(
+                            `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${parentId}/children?$filter=name eq 'Meter Archive'`,
+                            { headers }
+                        );
+                        if (retryRes.ok) {
+                            const retryData = await retryRes.json();
+                            const found = (retryData.value || []).find(i => i.folder && i.name === 'Meter Archive');
+                            if (found) archiveFolderId = found.id;
+                        }
+                        if (!archiveFolderId) throw new Error('Could not create Meter Archive folder');
+                    } else {
+                        archiveFolderId = (await mkdirRes.json()).id;
+                    }
+                }
+
+                // Copy the file into the Meter Archive folder
+                btn.textContent = '⏳ Creating archive file…';
                 const copyRes = await fetch(`${baseUrl}/copy`, {
                     method: 'POST', headers,
                     body: JSON.stringify({
-                        parentReference: { driveId, id: parentId },
+                        parentReference: { driveId, id: archiveFolderId },
                         name: archiveFileName
                     })
                 });
