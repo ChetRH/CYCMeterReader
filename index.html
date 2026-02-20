@@ -356,7 +356,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.7 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.8 &nbsp;2/19/2026</div>
 
 
 <script>
@@ -457,26 +457,36 @@
         function getBaseline() { return JSON.parse(localStorage.getItem(BASELINE_KEY) || '{}'); }
         function saveBaseline(b) { localStorage.setItem(BASELINE_KEY, JSON.stringify(b)); }
 
-        // ── Auto-fill previous reading ────────────────────────────
+        // ── Auto-fill previous reading + current + notes ──────────
         function autoFillPrev() {
             const id = slipId(currentDock, currentSlip);
             const readings = getReadings();
             const last = readings.find(r => r.meterId === id);
             const baseline = getBaseline();
             const prevEl = document.getElementById('prevReading');
+            const currEl = document.getElementById('meterReading');
+            const notesEl = document.getElementById('slipNotes');
+
             // Priority: local saved reading > SharePoint baseline > nothing
             if (last) {
                 prevEl.value = last.reading;
                 prevEl.style.opacity = '1';
                 prevEl.placeholder = '';
+                // Restore the saved current reading and notes so user can review/edit
+                currEl.value = last.reading;
+                notesEl.value = last.notes || '';
             } else if (baseline[id] !== undefined) {
                 prevEl.value = baseline[id];
                 prevEl.style.opacity = '1';
                 prevEl.placeholder = '';
+                currEl.value = '';
+                notesEl.value = '';
             } else {
                 prevEl.value = '';
                 prevEl.style.opacity = '0.7';
                 prevEl.placeholder = 'no prior reading';
+                currEl.value = '';
+                notesEl.value = '';
             }
             updateUsageDisplay();
         }
