@@ -385,7 +385,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 0.3 &nbsp;2/20/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 0.4 &nbsp;2/20/2026</div>
 
 
 <script>
@@ -956,13 +956,60 @@
 
                 await fetch(`${baseUrl}/workbook/closeSession`, { method: 'POST', headers: sessionHeaders });
 
-                // Clear local baseline and readings so prev fields go blank
-                saveBaseline({});
+                // Step 4: Read col B (slip) + col H (last month reading) from Electricity Report
+                btn.textContent = '⏳ Loading previous readings…';
+                let elecFileId = null, elecDriveId = null;
+                for (const drive of siteDrives) {
+                    const searchRes = await fetch(`https://graph.microsoft.com/v1.0/drives/${drive.id}/root/search(q='Electricity Report')`, { headers });
+                    if (!searchRes.ok) continue;
+                    const found = ((await searchRes.json()).value || []).find(f => f.name === ELEC_RPT_FILE);
+                    if (found) { elecFileId = found.id; elecDriveId = drive.id; break; }
+                }
+
+                if (!elecFileId) {
+                    // Not fatal — just warn and continue with empty baseline
+                    showToast(`✅ Archived to "${archiveFileName}" — could not find Electricity Report for baseline`, true);
+                    saveBaseline({});
+                } else {
+                    const elecBase = `https://graph.microsoft.com/v1.0/drives/${elecDriveId}/items/${elecFileId}`;
+
+                    // Open read-only session on Electricity Report
+                    const elecSessionRes = await fetch(`${elecBase}/workbook/createSession`, {
+                        method: 'POST', headers, body: JSON.stringify({ persistChanges: false })
+                    });
+                    if (!elecSessionRes.ok) throw new Error('Could not open Electricity Report session');
+                    const elecSessionHeaders = { ...headers, 'workbook-session-id': (await elecSessionRes.json()).id };
+
+                    // Read cols B and H, rows 2–115 (slip + last month reading)
+                    const elecRange = await fetch(
+                        `${elecBase}/workbook/worksheets('Sheet1')/range(address='B2:H115')`,
+                        { headers: elecSessionHeaders }
+                    );
+                    await fetch(`${elecBase}/workbook/closeSession`, { method: 'POST', headers: elecSessionHeaders });
+
+                    if (!elecRange.ok) throw new Error('Could not read Electricity Report range');
+                    const elecRows = (await elecRange.json()).values || [];
+
+                    // Col B is index 0, Col H is index 6 (B,C,D,E,F,G,H = 0..6)
+                    const baseline = {};
+                    for (const row of elecRows) {
+                        const slip = (row[0] || '').toString().trim();
+                        const reading = row[6]; // col H
+                        if (slip && reading !== '' && reading !== null) {
+                            baseline[slip] = reading;
+                        }
+                    }
+
+                    saveBaseline(baseline);
+                    const count = Object.keys(baseline).length;
+                    showToast(`✅ Archived → "${archiveFileName}" · ${count} previous readings loaded from Electricity Report`);
+                }
+
+                // Clear local readings and refresh display
                 saveReadings([]);
                 autoFillPrev();
                 renderTable();
 
-                showToast(`✅ Archived to "${archiveFileName}" — ready for new cycle!`);
             } catch (e) {
                 console.error('Reset error:', e);
                 showToast('❌ Reset failed: ' + e.message, true);
@@ -985,7 +1032,6 @@
                 syncBtn.disabled = false;
                 if (resetBtn) resetBtn.disabled = false;
                 if (kwhBtn) kwhBtn.disabled = false;
-                loadBaselineFromSharePoint(); // pull latest readings as prev baseline
             } else {
                 label.textContent = 'Not signed in to Microsoft';
                 btn.textContent = 'Sign In';
