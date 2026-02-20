@@ -122,24 +122,8 @@
         .btn-onedrive:active { transform: scale(0.97); opacity: 0.85; }
         .btn-onedrive:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .btn-admin {
-            width: 100%;
-            padding: 14px;
-            font-size: 1rem;
-            font-weight: bold;
-            background: #2a2a4a;
-            color: #aaa;
-            border: 2px solid #3a3a6a;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: transform 0.1s, opacity 0.2s;
-            letter-spacing: 1px;
-            margin-top: 8px;
-        }
-        .btn-admin:active { transform: scale(0.97); }
-        .btn-admin.open { color: #4fc3f7; border-color: #4fc3f7; }
-
         .btn-danger-admin {
+            margin-top: 8px;
             width: 100%;
             padding: 16px;
             font-size: 1.1rem;
@@ -337,15 +321,7 @@
         <button class="btn-onedrive" id="syncBtn" onclick="syncToOneDrive()" disabled>☁️ Sync to OneDrive Excel</button>
         <button class="btn-export" onclick="exportCSV()">📊 Export to CSV (Excel)</button>
         <button class="btn-clear" onclick="clearAll()">🔄 Start Over / Clear Readings</button>
-        <button class="btn-admin" onclick="toggleAdmin()">⚙️ Admin</button>
-    </div>
-
-    <!-- Admin Panel -->
-    <div class="card" id="adminPanel" style="display:none;">
-        <div class="section-title">⚙️ Admin</div>
-        <p style="color:#aaa; font-size:0.85rem; margin-bottom:16px;">These actions affect the SharePoint spreadsheet directly. Use with caution.</p>
         <button class="btn-danger-admin" id="resetSheetBtn" onclick="resetSpreadsheet()" disabled>📋 Start New Bill Readings</button>
-        <p style="color:#666; font-size:0.8rem; margin-top:8px;">Archives current data to a dated Excel file, then clears the main sheet for a fresh billing cycle. You must be signed in to Microsoft.</p>
     </div>
 
     <!-- Readings count (compact, no full table) -->
@@ -356,7 +332,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 2.8 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 2.9 &nbsp;2/19/2026</div>
 
 
 <script>
@@ -728,18 +704,6 @@
             }
         }
 
-        function toggleAdmin() {
-            const panel = document.getElementById('adminPanel');
-            const btn = document.querySelector('.btn-admin');
-            const open = panel.style.display === 'none';
-            panel.style.display = open ? 'block' : 'none';
-            btn.classList.toggle('open', open);
-        }
-
-        function updateAdminUI() {
-            const resetBtn = document.getElementById('resetSheetBtn');
-            if (resetBtn) resetBtn.disabled = !msalAccount;
-        }
 
         async function resetSpreadsheet() {
             if (!msalInstance || !msalAccount) { showToast('⚠️ Please sign in first', true); return; }
@@ -876,19 +840,21 @@
             const label = document.getElementById('msUserLabel');
             const btn = document.getElementById('msLoginBtn');
             const syncBtn = document.getElementById('syncBtn');
+            const resetBtn = document.getElementById('resetSheetBtn');
             if (msalAccount) {
                 label.innerHTML = `Signed in: <span>${msalAccount.username}</span>`;
                 btn.textContent = 'Sign Out';
                 btn.onclick = msLogout;
                 syncBtn.disabled = false;
+                if (resetBtn) resetBtn.disabled = false;
                 loadBaselineFromSharePoint(); // pull latest readings as prev baseline
             } else {
                 label.textContent = 'Not signed in to Microsoft';
                 btn.textContent = 'Sign In';
                 btn.onclick = msLogin;
                 syncBtn.disabled = true;
+                if (resetBtn) resetBtn.disabled = true;
             }
-            updateAdminUI();
         }
 
         async function msLogin() {
