@@ -323,7 +323,11 @@
         </div>
         <div class="form-group">
             <label>Slip Notes</label>
-            <input type="text" id="slipNotes" placeholder="e.g. meter stuck, no access…" autocomplete="off" style="font-size:1rem; letter-spacing:0;">
+            <div style="display:flex; gap:8px; align-items:center;">
+                <input type="text" id="slipNotes" placeholder="optional note…" autocomplete="off" style="font-size:1rem; letter-spacing:0; flex:1;">
+                <button type="button" onclick="setNote('Transient')" style="padding:8px 10px; font-size:0.8rem; font-weight:bold; background:#0f3460; color:#4fc3f7; border:2px solid #1a4a80; border-radius:8px; cursor:pointer; white-space:nowrap; flex-shrink:0;">TR</button>
+                <button type="button" onclick="setNote('Meter Broken')" style="padding:8px 10px; font-size:0.8rem; font-weight:bold; background:#0f3460; color:#ef5350; border:2px solid #4a1a1a; border-radius:8px; cursor:pointer; white-space:nowrap; flex-shrink:0;">MB</button>
+            </div>
         </div>
         <button class="btn-submit" onclick="saveReading()">💾 Save &amp; Next Slip</button>
     </div>
@@ -352,7 +356,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.6 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.7 &nbsp;2/19/2026</div>
 
 
 <script>
@@ -502,6 +506,12 @@
             } else {
                 box.style.display = 'none';
             }
+        }
+
+        // ── Quick note buttons ────────────────────────────────────
+        function setNote(text) {
+            const el = document.getElementById('slipNotes');
+            el.value = el.value === text ? '' : text; // toggle off if already set
         }
 
         // ── Save reading ──────────────────────────────────────────
