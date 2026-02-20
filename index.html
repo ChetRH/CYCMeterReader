@@ -86,7 +86,6 @@
             cursor: pointer;
             transition: transform 0.1s, opacity 0.2s;
             letter-spacing: 1px;
-            margin-bottom: 12px;
         }
         .btn-export:active { transform: scale(0.97); opacity: 0.85; }
 
@@ -117,13 +116,11 @@
             cursor: pointer;
             transition: transform 0.1s, opacity 0.2s;
             letter-spacing: 1px;
-            margin-bottom: 12px;
         }
         .btn-onedrive:active { transform: scale(0.97); opacity: 0.85; }
         .btn-onedrive:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .btn-danger-admin {
-            margin-top: 8px;
             width: 100%;
             padding: 16px;
             font-size: 1.1rem;
@@ -349,7 +346,7 @@
     </div>
 
     <!-- Actions Card -->
-    <div class="card">
+    <div class="card" style="display:flex; flex-direction:column; gap:12px;">
         <button class="btn-onedrive" id="syncBtn" onclick="syncToOneDrive()" disabled>☁️ Sync to OneDrive Excel</button>
         <button class="btn-clear" onclick="clearAll()">🔄 Start Over / Clear Readings</button>
         <button class="btn-danger-admin" id="resetSheetBtn" onclick="resetSpreadsheet()" disabled>📋 Start New Bill Readings</button>
@@ -364,7 +361,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.3 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.4 &nbsp;2/19/2026</div>
 
 
 <script>
