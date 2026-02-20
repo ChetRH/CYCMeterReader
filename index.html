@@ -385,7 +385,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 0.9 &nbsp;2/20/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.0 &nbsp;2/20/2026</div>
 
 
 <script>
@@ -787,7 +787,7 @@
         }
 
 
-        // ── Office Use Only: Save PEPCO KWH Rate to Electricity Report ──────
+        // ── Office Use Only: Save PEPCO KWH Rate + readings to Electricity Report ──────
         async function saveKwhRate() {
             if (!msalInstance || !msalAccount) { showToast('⚠️ Please sign in first', true); return; }
 
@@ -798,7 +798,7 @@
             if (isNaN(rate) || rate <= 0) { showToast('⚠️ Invalid rate — please enter a number like 0.1809', true); return; }
 
             const btn = document.getElementById('kwhBtn');
-            btn.textContent = '⏳ Saving rate…';
+            btn.textContent = '⏳ Connecting…';
             btn.disabled = true;
 
             try {
@@ -823,6 +823,7 @@
                 if (!fileId) throw new Error(`"${ELEC_RPT_FILE}" not found in SharePoint`);
 
                 const baseUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}`;
+                const sheetBase = `${baseUrl}/workbook/worksheets('Sheet1')`;
 
                 // Open a persistent session
                 const sessionRes = await fetch(`${baseUrl}/workbook/createSession`, {
@@ -831,29 +832,78 @@
                 if (!sessionRes.ok) throw new Error('Could not open workbook session');
                 const sessionHeaders = { ...headers, 'workbook-session-id': (await sessionRes.json()).id };
 
-                // Build date string for C116 label
+                // Build date strings
                 const now = new Date();
+                const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                const day = String(now.getDate()).padStart(2, '0');
+                const mon = months[now.getMonth()];
+                const yr  = String(now.getFullYear()).slice(-2);
+                const colHeader = `${day}-${mon}${yr}`;   // e.g. "20-Feb26"
+
                 const dateStr = now.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
                 const labelText = `Rate per kWH ${dateStr}`;
 
-                // Write C116 (label with date) and D116 (rate value) in one PATCH
-                const patchRes = await fetch(
-                    `${baseUrl}/workbook/worksheets('Sheet1')/range(address='C116:D116')`,
-                    {
-                        method: 'PATCH',
-                        headers: sessionHeaders,
-                        body: JSON.stringify({ values: [[labelText, rate]] })
-                    }
+                // Step 1: Read col B (slip IDs) rows 1–115 so we know where to put each reading
+                btn.textContent = '⏳ Reading slip list…';
+                const slipRes = await fetch(`${sheetBase}/range(address='B1:B115')`, { headers: sessionHeaders });
+                if (!slipRes.ok) throw new Error('Could not read slip column from Electricity Report');
+                const slipRows = (await slipRes.json()).values || [];
+
+                // Build slip → row index map (row 1 = header, data rows 2–115)
+                const slipRowMap = {};
+                for (let i = 1; i < slipRows.length; i++) {
+                    const slip = (slipRows[i][0] || '').toString().trim();
+                    if (slip) slipRowMap[slip] = i + 1; // 1-based row number
+                }
+
+                // Step 2: Insert a new column H (col 8), pushing old H→I onward
+                btn.textContent = '⏳ Inserting new column…';
+                await fetch(`${sheetBase}/columns/$/itemAt(index=7)/insert`,
+                    { method: 'POST', headers: sessionHeaders, body: JSON.stringify({}) }
                 );
+
+                // Step 3: Write the date header into H1
+                await fetch(`${sheetBase}/range(address='H1')`, {
+                    method: 'PATCH',
+                    headers: sessionHeaders,
+                    body: JSON.stringify({ values: [[colHeader]] })
+                });
+
+                // Step 4: Get local readings and write each into the correct row in col H
+                btn.textContent = '⏳ Writing readings…';
+                const readings = getReadings();
+
+                // Build a full H2:H115 column of values (blank where no reading)
+                const totalRows = 114; // rows 2–115
+                const colValues = Array.from({ length: totalRows }, () => ['']);
+
+                let written = 0;
+                for (const r of readings) {
+                    const rowNum = slipRowMap[r.meterId];
+                    if (!rowNum) continue;
+                    const idx = rowNum - 2; // offset into colValues array (row 2 = index 0)
+                    // reading is stored as 5-digit trimmed value; write as number
+                    const val = parseFloat(r.reading);
+                    if (!isNaN(val)) { colValues[idx] = [val]; written++; }
+                }
+
+                await fetch(`${sheetBase}/range(address='H2:H115')`, {
+                    method: 'PATCH',
+                    headers: sessionHeaders,
+                    body: JSON.stringify({ values: colValues })
+                });
+
+                // Step 5: Write rate label to C116 and rate value to D116
+                btn.textContent = '⏳ Saving rate…';
+                await fetch(`${sheetBase}/range(address='C116:D116')`, {
+                    method: 'PATCH',
+                    headers: sessionHeaders,
+                    body: JSON.stringify({ values: [[labelText, rate]] })
+                });
 
                 await fetch(`${baseUrl}/workbook/closeSession`, { method: 'POST', headers: sessionHeaders });
 
-                if (!patchRes.ok) {
-                    const err = await patchRes.json();
-                    throw new Error(err?.error?.message || 'Failed to write to spreadsheet');
-                }
-
-                showToast(`⚡ Rate $${rate}/KWH saved to Electricity Report!`);
+                showToast(`⚡ "${colHeader}" column added · ${written} readings written · Rate $${rate}/KWH saved`);
 
             } catch (e) {
                 showToast('❌ ' + e.message, true);
