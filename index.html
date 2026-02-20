@@ -257,6 +257,35 @@
         }
         .slip-nav-btn:active { transform: scale(0.92); background: linear-gradient(135deg, #ffe066, #b8860b); }
         .slip-nav-btn:disabled { opacity: 0.2; cursor: not-allowed; box-shadow: none; }
+
+        .btn-mic {
+            background: linear-gradient(135deg, #1b5e20, #2e7d32);
+            border: 2px solid #66bb6a;
+            border-radius: 12px;
+            color: #66bb6a;
+            font-size: 1.5rem;
+            width: 56px;
+            height: 56px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s, transform 0.1s, border-color 0.15s;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(102,187,106,0.25);
+        }
+        .btn-mic:active { transform: scale(0.92); }
+        .btn-mic.listening {
+            background: linear-gradient(135deg, #b71c1c, #ef5350);
+            border-color: #ff8a80;
+            color: white;
+            animation: mic-pulse 0.8s ease-in-out infinite alternate;
+        }
+        .btn-mic.unsupported { opacity: 0.3; cursor: not-allowed; }
+        @keyframes mic-pulse {
+            from { box-shadow: 0 4px 12px rgba(239,83,80,0.4); }
+            to   { box-shadow: 0 4px 24px rgba(239,83,80,0.9); }
+        }
     </style>
 </head>
 <body>
@@ -299,7 +328,10 @@
         </div>
         <div class="form-group">
             <label>Current Reading</label>
-            <input type="number" id="meterReading" placeholder="6-digit reading" inputmode="numeric" autocomplete="off" autofocus>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <input type="number" id="meterReading" placeholder="6-digit reading" inputmode="numeric" autocomplete="off" autofocus style="flex:1;">
+                <button class="btn-mic" id="micBtn" onclick="toggleVoice()" title="Speak the meter reading">🎤</button>
+            </div>
         </div>
         <div class="form-group" id="usageDisplay" style="display:none;">
             <label>Usage</label>
@@ -332,7 +364,7 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.0 &nbsp;2/19/2026</div>
+    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.1 &nbsp;2/19/2026</div>
 
 
 <script>
@@ -893,6 +925,78 @@
                 const resp = await msalInstance.acquireTokenPopup({ scopes: GRAPH_SCOPES });
                 return resp.accessToken;
             }
+        }
+
+        // ── Voice input ───────────────────────────────────────────
+        let voiceRecognition = null;
+        let voiceListening = false;
+
+        (function initVoice() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const micBtn = document.getElementById('micBtn');
+            if (!SpeechRecognition) {
+                micBtn.classList.add('unsupported');
+                micBtn.title = 'Voice input not supported on this browser';
+                micBtn.onclick = () => showToast('⚠️ Voice input not supported on this browser', true);
+                return;
+            }
+            const rec = new SpeechRecognition();
+            rec.lang = 'en-US';
+            rec.interimResults = false;
+            rec.maxAlternatives = 3;
+            rec.continuous = false;
+
+            rec.onresult = (e) => {
+                // Try each alternative until we get a clean 6-digit number
+                let best = null;
+                for (let i = 0; i < e.results[0].length; i++) {
+                    const raw = e.results[0][i].transcript.trim();
+                    // Strip spaces/commas, convert word numbers if needed
+                    const digits = raw.replace(/[\s,]/g, '');
+                    if (/^\d{6}$/.test(digits)) { best = digits; break; }
+                    // Also try stripping any non-digits
+                    const stripped = raw.replace(/\D/g, '');
+                    if (/^\d{6}$/.test(stripped)) { best = stripped; break; }
+                }
+                if (best) {
+                    document.getElementById('meterReading').value = best;
+                    updateUsageDisplay();
+                    showToast(`🎤 Got: ${best}`);
+                } else {
+                    const heard = e.results[0][0].transcript;
+                    showToast(`⚠️ Heard "${heard}" — not a 6-digit number`, true);
+                }
+                stopVoice();
+            };
+
+            rec.onerror = (e) => {
+                if (e.error !== 'no-speech' && e.error !== 'aborted') {
+                    showToast('🎤 ' + (e.error === 'not-allowed' ? 'Microphone permission denied' : 'Voice error: ' + e.error), true);
+                }
+                stopVoice();
+            };
+
+            rec.onend = () => stopVoice();
+
+            voiceRecognition = rec;
+        })();
+
+        function toggleVoice() {
+            if (voiceListening) { stopVoice(); return; }
+            if (!voiceRecognition) return;
+            const micBtn = document.getElementById('micBtn');
+            micBtn.classList.add('listening');
+            micBtn.textContent = '⏹️';
+            voiceListening = true;
+            try { voiceRecognition.start(); } catch(e) { stopVoice(); }
+        }
+
+        function stopVoice() {
+            voiceListening = false;
+            const micBtn = document.getElementById('micBtn');
+            micBtn.classList.remove('listening');
+            micBtn.textContent = '🎤';
+            try { voiceRecognition && voiceRecognition.stop(); } catch(e) {}
         }
 
         async function syncToOneDrive() {
