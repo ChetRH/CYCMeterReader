@@ -74,67 +74,20 @@
         }
         .btn-submit:active { transform: scale(0.97); opacity: 0.85; }
 
-.btn-export {
-            width: 100%;
-            padding: 16px;
-            font-size: 1.1rem;
+        .btn-home {
+            padding: 10px 18px;
+            font-size: 0.9rem;
             font-weight: bold;
-            background: linear-gradient(135deg, #66bb6a, #388e3c);
-            color: white;
-            border: none;
-            border-radius: 12px;
+            background: #0f3460;
+            color: #4fc3f7;
+            border: 2px solid #1a4a80;
+            border-radius: 10px;
             cursor: pointer;
-            transition: transform 0.1s, opacity 0.2s;
-            letter-spacing: 1px;
+            transition: transform 0.1s, border-color 0.15s;
+            letter-spacing: 0.5px;
         }
-        .btn-export:active { transform: scale(0.97); opacity: 0.85; }
-
-        .btn-clear {
-            width: 100%;
-            padding: 16px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            background: linear-gradient(135deg, #ef5350, #b71c1c);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: transform 0.1s, opacity 0.2s;
-            letter-spacing: 1px;
-        }
-        .btn-clear:active { transform: scale(0.97); opacity: 0.85; }
-
-        .btn-onedrive {
-            width: 100%;
-            padding: 16px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            background: linear-gradient(135deg, #0078d4, #004e8c);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: transform 0.1s, opacity 0.2s;
-            letter-spacing: 1px;
-        }
-        .btn-onedrive:active { transform: scale(0.97); opacity: 0.85; }
-        .btn-onedrive:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        .btn-danger-admin {
-            width: 100%;
-            padding: 16px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            background: linear-gradient(135deg, #ef5350, #b71c1c);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: transform 0.1s, opacity 0.2s;
-            letter-spacing: 1px;
-        }
-        .btn-danger-admin:active { transform: scale(0.97); opacity: 0.85; }
-        .btn-danger-admin:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-home:active { transform: scale(0.97); }
+        .btn-home:hover { border-color: #4fc3f7; }
 
         .ms-login-bar {
             width: 100%;
@@ -175,7 +128,7 @@
         }
         .dock-btn.active { background: #0288d1; color: #fff; border-color: #4fc3f7; }
 
-.toast {
+        .toast {
             position: fixed;
             bottom: 30px;
             left: 50%;
@@ -192,35 +145,6 @@
         }
         .toast.show { transform: translateX(-50%) translateY(0); }
         .toast.error { background: #ef5350; color: #fff; }
-
-        .readings-table-wrap { width: 100%; max-width: 500px; overflow-x: auto; }
-
-        .section-title {
-            font-size: 1rem;
-            color: #4fc3f7;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 14px;
-        }
-
-        table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
-        thead tr { background: #0f3460; }
-        th { padding: 12px 10px; text-align: left; color: #4fc3f7; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; }
-        td { padding: 12px 10px; border-bottom: 1px solid #1a2a4a; color: #ddd; }
-        tr:last-child td { border-bottom: none; }
-        tr:hover td { background: #1a2a4a; }
-
-        .empty-msg { text-align: center; color: #555; padding: 30px; font-size: 0.95rem; }
-
-        .count-badge {
-            display: inline-block;
-            background: #0f3460;
-            color: #4fc3f7;
-            border-radius: 20px;
-            padding: 2px 12px;
-            font-size: 0.85rem;
-            margin-left: 8px;
-        }
 
         .progress-bar-wrap {
             width: 100%;
@@ -255,22 +179,6 @@
         .slip-nav-btn:active { transform: scale(0.92); background: linear-gradient(135deg, #ffe066, #b8860b); }
         .slip-nav-btn:disabled { opacity: 0.2; cursor: not-allowed; box-shadow: none; }
 
-        .btn-office {
-            width: 100%;
-            padding: 16px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            background: linear-gradient(135deg, #37474f, #263238);
-            color: #cfd8dc;
-            border: 1px solid #546e7a;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: transform 0.1s, opacity 0.2s;
-            letter-spacing: 1px;
-        }
-        .btn-office:active { transform: scale(0.97); opacity: 0.85; }
-        .btn-office:disabled { opacity: 0.35; cursor: not-allowed; }
-
         .btn-mic {
             background: linear-gradient(135deg, #1b5e20, #2e7d32);
             border: 2px solid #66bb6a;
@@ -299,24 +207,124 @@
             from { box-shadow: 0 4px 12px rgba(239,83,80,0.4); }
             to   { box-shadow: 0 4px 24px rgba(239,83,80,0.9); }
         }
+
+        /* ── Home Screen ─────────────────────────────────────────── */
+        #homeOverlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: #1a1a2e;
+            z-index: 500;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px 20px 60px;
+            overflow-y: auto;
+        }
+
+        .home-action-btn {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 20px 22px;
+            border: 2px solid transparent;
+            border-radius: 16px;
+            color: white;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.15s;
+            text-align: left;
+            width: 100%;
+        }
+        .home-action-btn:active { transform: scale(0.97); opacity: 0.85; }
+        .home-action-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+        .home-action-btn .hab-icon { font-size: 2rem; flex-shrink: 0; width: 44px; text-align: center; }
+        .home-action-btn .hab-title { font-size: 1.15rem; font-weight: bold; margin-bottom: 3px; }
+        .home-action-btn .hab-desc { font-size: 0.8rem; opacity: 0.75; }
+
+        .hab-new    { background: linear-gradient(135deg, #2e7d32, #1b5e20); }
+        .hab-resume { background: linear-gradient(135deg, #0288d1, #01579b); }
+        .hab-send   { background: linear-gradient(135deg, #0078d4, #004e8c); }
+        .hab-office { background: linear-gradient(135deg, #37474f, #263238); border-color: #546e7a !important; }
+
+        #homeStatusMsg {
+            color: #4fc3f7;
+            font-size: 0.9rem;
+            text-align: center;
+            min-height: 24px;
+            margin-top: 12px;
+            letter-spacing: 0.5px;
+        }
     </style>
 </head>
 <body>
 
+    <!-- ══ HOME SCREEN OVERLAY ═════════════════════════════════════ -->
+    <div id="homeOverlay">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
+            <img src="CYC Burgee.png" alt="CYC Burgee" style="height:36px;">
+            <h1 style="margin-bottom:0; font-size:1.5rem;">CYC Meter Reader</h1>
+        </div>
+        <p style="color:#888; font-size:0.85rem; margin-bottom:24px;">Docks A · B · C — Odd side out, Even side back</p>
+
+        <!-- Login bar -->
+        <div class="ms-login-bar" style="margin-bottom:24px;">
+            <div id="homeUserLabel">Not signed in to Microsoft</div>
+            <button class="btn-mslogin" id="homeLoginBtn" onclick="toggleLogin()">Sign In</button>
+        </div>
+
+        <!-- Action buttons -->
+        <div style="width:100%; max-width:500px; display:flex; flex-direction:column; gap:12px;">
+            <button class="home-action-btn hab-new" id="habStartNew" onclick="homeAction('startNew')">
+                <span class="hab-icon">📋</span>
+                <div>
+                    <div class="hab-title">Start New Month</div>
+                    <div class="hab-desc">Archive current data and begin a new billing cycle</div>
+                </div>
+            </button>
+
+            <button class="home-action-btn hab-resume" id="habResume" onclick="homeAction('resume')">
+                <span class="hab-icon">📍</span>
+                <div>
+                    <div class="hab-title">Resume / Reread</div>
+                    <div class="hab-desc">Load current cycle data and continue reading meters</div>
+                </div>
+            </button>
+
+            <button class="home-action-btn hab-send" id="habSend" onclick="homeAction('send')">
+                <span class="hab-icon">📧</span>
+                <div>
+                    <div class="hab-title">Send to Office</div>
+                    <div class="hab-desc">Email office staff that meter readings are complete</div>
+                </div>
+            </button>
+
+            <button class="home-action-btn hab-office" id="habOffice" onclick="homeAction('office')">
+                <span class="hab-icon">⚡</span>
+                <div>
+                    <div class="hab-title">Office Functions</div>
+                    <div class="hab-desc">Enter PEPCO KWH rate and update Electricity Report</div>
+                </div>
+            </button>
+        </div>
+
+        <div id="homeStatusMsg"></div>
+
+        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.4 &nbsp;2/23/2026</div>
+    </div>
+
+    <!-- ══ METER READING UI ════════════════════════════════════════ -->
     <div style="display:flex; align-items:center; gap:8px; margin-bottom:2px;">
         <img src="CYC Burgee.png" alt="CYC Burgee" style="height:30px;">
         <h1 style="margin-bottom:0; font-size:1.3rem;">CYC Meter Reader</h1>
     </div>
     <p class="subtitle" style="margin-bottom:16px;">Docks A · B · C — Odd side out, Even side back</p>
 
-    <!-- Microsoft Login Bar -->
-    <div class="ms-login-bar" id="msLoginBar">
-        <div id="msUserLabel">Not signed in to Microsoft</div>
-        <button class="btn-mslogin" id="msLoginBtn" onclick="msLogin()">Sign In</button>
-    </div>
-
     <!-- Entry Card -->
     <div class="card">
+        <!-- Home button row -->
+        <div style="display:flex; justify-content:flex-end; margin-bottom:14px;">
+            <button class="btn-home" onclick="showHomeScreen()">🏠 Home</button>
+        </div>
         <div class="form-group">
             <label>Current Slip</label>
             <!-- Dock selector row -->
@@ -363,100 +371,62 @@
         <button class="btn-submit" onclick="saveReading()">💾 Save &amp; Next Slip</button>
     </div>
 
-    <!-- Actions Card -->
-    <div class="card" style="display:flex; flex-direction:column; gap:12px;">
-        <button class="btn-danger-admin" id="resetSheetBtn" onclick="resetSpreadsheet()" disabled>📋 Start New Bill Readings</button>
-        <button class="btn-onedrive" id="syncBtn" onclick="syncToOneDrive()" disabled>☁️ Save to OneDrive Excel</button>
-        <button class="btn-clear" onclick="clearAll()">🔄 Start Over / Clear Readings</button>
-        <button class="btn-export" onclick="exportCSV()">📊 Export to CSV (Excel)</button>
-    </div>
-
-    <!-- Office Use Only Card -->
-    <div style="width:100%; max-width:500px; margin-top:16px;">
-        <div style="text-align:center; font-size:0.72rem; letter-spacing:2px; text-transform:uppercase; color:#666; margin-bottom:6px;">— Office Use Only —</div>
-        <div class="card" style="display:flex; flex-direction:column; gap:12px; border: 1px solid #333;">
-            <button class="btn-office" id="kwhBtn" onclick="saveKwhRate()" disabled>⚡ Enter PEPCO KWH Rate</button>
-        </div>
-    </div>
-
-    <!-- Readings count (compact, no full table) -->
+    <!-- Readings count -->
     <div style="width:100%; max-width:500px; text-align:center; color:#555; font-size:0.85rem; margin-top:4px; margin-bottom:8px;">
-        <span id="countBadge" class="count-badge">0</span> readings saved locally
+        <span id="countBadge" class="count-badge" style="display:inline-block; background:#0f3460; color:#4fc3f7; border-radius:20px; padding:2px 12px; font-size:0.85rem;">0</span> readings saved locally
     </div>
 
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.2 &nbsp;2/20/2026</div>
-
 
 <script>
-        const STORAGE_KEY = 'meter_readings';
-        const BASELINE_KEY = 'meter_baseline'; // slip -> last known reading from SharePoint
+        const STORAGE_KEY  = 'meter_readings';
+        const BASELINE_KEY = 'meter_baseline';
         const DOCKS = ['A', 'B', 'C'];
 
-        // ── Physical walk order per dock ──────────────────────────
-        // Odd side = walking out, Even side = walking back
-        // NOTE: Dock C walk order TBD — using sequential fallback until provided
         const DOCK_WALK = {
             A: [
-                // Odd side — lowest to highest (walking out)
                 'A01','A03','A05','A07','A09','A11','A13','A15','A17','A19','A21','A23','A25','A27','A29','A31','A33','A35',
-                // Even side — highest to lowest (walking back)
                 'A30','A28','A26','A24','A22','A20','A18','A16','A14','A12','A10','A08','A06','A04','A02'
             ],
             B: [
-                // Odd side — lowest to highest (walking out)
                 'B01','B03','B05','B07','B09','B11','B13','B15','B17','B19','B21','B23','B25','B27','B29',
-                // Even side — highest to lowest (walking back)
                 'B28','B26','B24','B22','B20','B18','B16','B14','B12','B10','B08','B06','B04'
             ],
             C: [
-                // Odd side — lowest to highest (walking out)
                 'C03','C05','C07','C09','C11','C13','C15','C17','C19','C21','C23','C25','C27',
-                // Even side — highest to lowest (walking back)
                 'C36','C34','C32','C30','C28','C26','C24','C22','C20','C18','C16','C14','C12','C10','C08','C06','C04','C02'
             ]
         };
 
-        // Build a flat global walk order across all docks
         function buildWalkOrder() {
             const order = [];
             DOCKS.forEach(d => { (DOCK_WALK[d] || []).forEach(s => order.push(s)); });
             return order;
         }
 
-        // ── Current position ──────────────────────────────────────
         let walkOrder = buildWalkOrder();
-        let walkIndex = 0; // index into walkOrder
+        let walkIndex = 0;
 
-        // Derive currentDock and currentSlip from walkIndex for compatibility
         function currentSlipId() { return walkOrder[walkIndex] || 'A01'; }
         function currentDockFromIndex() { return currentSlipId()[0]; }
-
-// ── Slip helpers ──────────────────────────────────────────
-        function slipId(dock, slip) {
-            return `${dock}${String(slip).padStart(2, '0')}`;
-        }
 
         function updateSlipDisplay() {
             const id = currentSlipId();
             const dock = id[0];
             document.getElementById('currentSlipDisplay').textContent = id;
             DOCKS.forEach(d => document.getElementById('dock' + d).classList.toggle('active', d === dock));
-            // Progress bar
             const pct = walkOrder.length > 1 ? (walkIndex / (walkOrder.length - 1)) * 100 : 0;
             document.getElementById('progressBar').style.width = `${pct}%`;
-            // Arrow button states
             document.getElementById('prevSlipBtn').disabled = walkIndex === 0;
             document.getElementById('nextSlipBtn').disabled = walkIndex === walkOrder.length - 1;
         }
 
         function saveAndNavigate(moveFn) {
             const curr = document.getElementById('meterReading').value.trim();
-            if (curr) saveReading(true, moveFn); // auto-save then move
+            if (curr) saveReading(true, moveFn);
             else {
-                // nothing to save — just clear and move
                 document.getElementById('slipNotes').value = '';
                 document.getElementById('meterReading').value = '';
                 document.getElementById('usageDisplay').style.display = 'none';
@@ -479,7 +449,6 @@
         }
 
         function setDock(dock) {
-            // Jump to the first slip of the selected dock in walk order
             const idx = walkOrder.findIndex(s => s[0] === dock);
             if (idx >= 0) walkIndex = idx;
             updateSlipDisplay();
@@ -501,22 +470,19 @@
             autoFillPrev();
         }
 
-        // ── Baseline (SharePoint previous readings) ───────────────
+        // ── Baseline ──────────────────────────────────────────────
         function getBaseline() { return JSON.parse(localStorage.getItem(BASELINE_KEY) || '{}'); }
         function saveBaseline(b) { localStorage.setItem(BASELINE_KEY, JSON.stringify(b)); }
 
-        // ── Auto-fill previous reading + current + notes ──────────
+        // ── Auto-fill ─────────────────────────────────────────────
         function autoFillPrev() {
             const id = currentSlipId();
             const readings = getReadings();
             const last = readings.find(r => r.meterId === id);
             const baseline = getBaseline();
             const prevEl = document.getElementById('prevReading');
-            const currEl = document.getElementById('meterReading');
             const notesEl = document.getElementById('slipNotes');
 
-            // Previous reading always comes from baseline (Electricity Report) — never changes
-            // until Start New Bill Readings runs. Current reading persists if already saved.
             if (baseline[id] !== undefined) {
                 prevEl.value = formatPrevDisplay(baseline[id]);
                 prevEl.style.opacity = '1';
@@ -527,7 +493,6 @@
                 prevEl.placeholder = 'no prior reading';
             }
 
-            // Current reading: show saved value if exists, otherwise reset to 000000
             if (last) {
                 setMeterBuffer(formatPrevDisplay(last.reading));
                 notesEl.value = last.notes || '';
@@ -543,16 +508,13 @@
         function saveReadings(r) { localStorage.setItem(STORAGE_KEY, JSON.stringify(r)); }
 
         // ── Meter reading helpers ─────────────────────────────────
-        // Trim the last digit before saving (meters record to nearest 10)
         function trimReading(val) {
             const s = val.toString().trim();
-            return s.length > 0 ? s.slice(0, -1) : s; // drop last digit
+            return s.length > 0 ? s.slice(0, -1) : s;
         }
-        // Display a stored value as 6 digits: pad leading zeros to 5, append trailing 0
-        // e.g. 4510 → "045100",  12345 → "123450",  999 → "009990"
         function formatPrevDisplay(val) {
             if (val === '' || val === null || val === undefined) return '';
-            const s = val.toString().trim().replace(/\D/g, ''); // digits only
+            const s = val.toString().trim().replace(/\D/g, '');
             if (s === '') return '';
             return s.padStart(5, '0') + '0';
         }
@@ -568,10 +530,8 @@
 
         // ── Live usage display ────────────────────────────────────
         function updateUsageDisplay() {
-            // prevReading shows 6-digit display format — strip trailing 0 for math
             const prevDisplay = document.getElementById('prevReading').value.trim();
             const prev = parseFloat(prevDisplay.length > 0 ? prevDisplay.slice(0, -1) : '');
-            // meterBuffer is always 6 digits; trim last digit for comparison
             const curr = meterBuffer === '000000' ? NaN : parseFloat(trimReading(meterBuffer));
             const box = document.getElementById('usageDisplay');
             const val = document.getElementById('usageValue');
@@ -586,23 +546,18 @@
         // ── Quick note buttons ────────────────────────────────────
         function setNote(text) {
             const el = document.getElementById('slipNotes');
-            el.value = el.value === text ? '' : text; // toggle off if already set
+            el.value = el.value === text ? '' : text;
         }
 
         // ── Save reading ──────────────────────────────────────────
-        // navFn: optional function to call instead of advanceSlip (used by arrow nav)
         function saveReading(skipAutoAdvance = false, navFn = null) {
-            const currRaw = meterBuffer; // always 6 digits from the buffer
+            const currRaw = meterBuffer;
             if (currRaw === '000000') { showToast('⚠️ Please enter a reading', true); document.getElementById('meterReading').focus(); return; }
 
-            // Trim last digit before saving (meters record to nearest 10)
-            const curr = trimReading(currRaw); // 5-digit stored value
-
-            // prev display is 6-digit formatted — strip trailing 0 to get stored 5-digit value for math
+            const curr = trimReading(currRaw);
             const prevDisplay = document.getElementById('prevReading').value.trim();
-            const prev = prevDisplay.length > 0 ? prevDisplay.slice(0, -1) : ''; // stored 5-digit value
+            const prev = prevDisplay.length > 0 ? prevDisplay.slice(0, -1) : '';
 
-            // Warn if current reading is less than previous
             if (prev !== '' && !isNaN(prev) && !isNaN(curr) && parseFloat(curr) < parseFloat(prev)) {
                 if (!confirm(`⚠️ Current reading (${curr}) is LESS than previous (${prev}).\n\nIs this correct?`)) {
                     document.getElementById('meterReading').focus();
@@ -612,24 +567,22 @@
 
             const usage = (prev !== '' && !isNaN(prev) && !isNaN(curr)) ? (parseFloat(curr) - parseFloat(prev)).toFixed(0) : '';
             const notes = document.getElementById('slipNotes').value.trim();
-
             const now = new Date();
             const entry = {
                 meterId: currentSlipId(),
-                prevReading: prev,   // stored as 5-digit value
-                reading: curr,       // stored as 5-digit value (last digit trimmed)
+                prevReading: prev,
+                reading: curr,
                 usage: usage,
                 notes: notes,
                 date: now.toLocaleDateString(),
                 time: now.toLocaleTimeString()
             };
             const readings = getReadings();
-            // Replace existing entry for this slip if already saved this session
             const existingIdx = readings.findIndex(r => r.meterId === entry.meterId);
             if (existingIdx >= 0) readings[existingIdx] = entry;
             else readings.unshift(entry);
             saveReadings(readings);
-            renderTable();
+            renderCount();
             showToast(`✅ ${entry.meterId} saved!${usage !== '' ? ' Usage: ' + usage : ''}${notes ? ' 📝' : ''}`);
             document.getElementById('slipNotes').value = '';
             document.getElementById('usageDisplay').style.display = 'none';
@@ -638,52 +591,12 @@
             document.getElementById('meterReading').focus();
         }
 
-
-// ── Export ────────────────────────────────────────────────
-        function exportCSV() {
-            const readings = getReadings();
-            if (!readings.length) { showToast('⚠️ No readings to export', true); return; }
-            const sorted = [...readings].sort((a, b) => a.meterId.localeCompare(b.meterId));
-            let csv = 'Slip,Previous Reading,Current Reading,Usage,Date,Time\n';
-            sorted.forEach(r => {
-                csv += `"${r.meterId}","${r.prevReading || ''}","${r.reading}","${r.usage || ''}","${r.date}","${r.time}"\n`;
-            });
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `cyc_meter_readings_${new Date().toISOString().slice(0,10)}.csv`;
-            a.click();
-            URL.revokeObjectURL(url);
-            showToast('📊 CSV exported!');
-        }
-
-        // ── Clear ─────────────────────────────────────────────────
-        function clearAll() {
-            const readings = getReadings();
-            if (!readings.length) { showToast('⚠️ Nothing to clear', true); return; }
-            if (confirm(`Delete all ${readings.length} readings? This cannot be undone.`)) {
-                saveReadings([]);
-                walkIndex = 0;
-                updateSlipDisplay();
-                autoFillPrev(); // re-fill from baseline
-                renderTable();
-                showToast('🗑️ All readings cleared');
-            }
-        }
-
-        // ── Table ─────────────────────────────────────────────────
-        function renderTable() {
-            const readings = getReadings();
-            document.getElementById('countBadge').textContent = readings.length;
+        function renderCount() {
+            document.getElementById('countBadge').textContent = getReadings().length;
         }
 
         // ── Calculator-style meter entry ──────────────────────────
-        // Field is readonly — we manage value via keydown.
-        // Digits shift in from the right: 000000 → 000001 → 000012 etc.
-        // Backspace removes last digit (shifts right, prepends 0).
-
-        let meterBuffer = '000000'; // internal 6-char digit buffer
+        let meterBuffer = '000000';
 
         function setMeterBuffer(val) {
             meterBuffer = val.padStart(6, '0').slice(-6);
@@ -698,12 +611,10 @@
         document.getElementById('meterReading').addEventListener('keydown', e => {
             if (e.key >= '0' && e.key <= '9') {
                 e.preventDefault();
-                // Shift left, append new digit, keep last 6
                 const next = (meterBuffer + e.key).slice(-6);
                 setMeterBuffer(next);
             } else if (e.key === 'Backspace') {
                 e.preventDefault();
-                // Remove last digit, prepend 0
                 const next = '0' + meterBuffer.slice(0, -1);
                 setMeterBuffer(next);
             } else if (e.key === 'Enter') {
@@ -712,10 +623,8 @@
             }
         });
 
-        // Also capture digits from anywhere on the page (for hardware scanners / physical keyboards)
         document.addEventListener('keydown', e => {
             const tag = document.activeElement?.tagName;
-            // Only intercept if focus is NOT on another input/textarea/button
             if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON') return;
             if (e.key === 'Enter') { saveReading(); return; }
         });
@@ -725,19 +634,26 @@
         // Init
         updateSlipDisplay();
         autoFillPrev();
-        renderTable();
+        renderCount();
 
-        // ── Microsoft / OneDrive Sync ─────────────────────────────
-        const SP_HOSTNAME    = 'capitalyachtclubcom.sharepoint.com';
-        const SP_SITE_PATH   = '/sites/DockOperations';
-        const EXCEL_FILE     = 'CYC Dock Meter Reading.xlsx';
-        const ELEC_RPT_FILE  = 'Electricity Report.xlsx';
-        const EXCEL_FOLDER  = '/Dock Operations - General/Meter Reading';
-        const GRAPH_SCOPES  = ['Files.ReadWrite.All', 'Sites.ReadWrite.All', 'User.Read'];
+        // ── Microsoft / SharePoint ────────────────────────────────
+        const SP_HOSTNAME   = 'capitalyachtclubcom.sharepoint.com';
+        const SP_SITE_PATH  = '/sites/DockOperations';
+        const EXCEL_FILE    = 'CYC Dock Meter Reading.xlsx';
+        const ELEC_RPT_FILE = 'Electricity Report.xlsx';
+        const GRAPH_SCOPES  = ['Files.ReadWrite.All', 'Sites.ReadWrite.All', 'User.Read', 'Mail.Send'];
+        const NOTIFY_EMAILS = [
+            'gm@capitalyachtclub.com',
+            'office@capitalyachtclub.com',
+            'ITChair@capitalyachtclub.com',
+            'Assistant@capitalyachtclub.com',
+            'DM@capitalyachtclub.com'
+        ];
         let msalInstance = null;
-        let msalAccount = null;
+        let msalAccount  = null;
+        let autoSyncTimer = null;
+        let syncBusy = false;
 
-        // Dynamically load MSAL then initialize
         (function loadMSAL() {
             const s = document.createElement('script');
             s.src = 'https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.1/lib/msal-browser.min.js';
@@ -753,13 +669,109 @@
                 await msalInstance.initialize();
                 const accounts = msalInstance.getAllAccounts();
                 if (accounts.length > 0) msalAccount = accounts[0];
-                updateLoginUI();
+                updateHomeLoginUI();
+                if (msalAccount) startAutoSync();
             };
             s.onerror = () => showToast('❌ Could not load Microsoft login library', true);
             document.head.appendChild(s);
         })();
 
-        // ── Load baseline from SharePoint on login/reload ─────────
+        // ── Home Screen ───────────────────────────────────────────
+        function showHomeScreen() {
+            document.getElementById('homeOverlay').style.display = 'flex';
+            updateHomeLoginUI();
+            setHomeStatus('');
+        }
+
+        function hideHomeScreen() {
+            document.getElementById('homeOverlay').style.display = 'none';
+        }
+
+        function updateHomeLoginUI() {
+            const label = document.getElementById('homeUserLabel');
+            const btn   = document.getElementById('homeLoginBtn');
+            if (msalAccount) {
+                label.innerHTML = `Signed in: <span>${msalAccount.username}</span>`;
+                btn.textContent = 'Sign Out';
+            } else {
+                label.textContent = 'Not signed in to Microsoft';
+                btn.textContent = 'Sign In';
+            }
+        }
+
+        async function toggleLogin() {
+            if (msalAccount) {
+                try {
+                    await msalInstance.logoutPopup({ account: msalAccount });
+                    msalAccount = null;
+                    stopAutoSync();
+                    updateHomeLoginUI();
+                } catch (e) {
+                    console.error('Logout error:', e);
+                }
+            } else {
+                if (!msalInstance) { showToast('❌ Login library not ready yet', true); return; }
+                try {
+                    const resp = await msalInstance.loginPopup({ scopes: GRAPH_SCOPES });
+                    msalAccount = resp.account;
+                    updateHomeLoginUI();
+                    startAutoSync();
+                } catch (e) {
+                    console.error('Login error:', e);
+                    if (e.errorCode !== 'user_cancelled') showToast('❌ Sign in failed: ' + e.message, true);
+                }
+            }
+        }
+
+        function setHomeStatus(msg) {
+            document.getElementById('homeStatusMsg').textContent = msg;
+        }
+
+        function setHomeBtnsDisabled(disabled) {
+            ['habStartNew','habResume','habSend','habOffice'].forEach(id => {
+                document.getElementById(id).disabled = disabled;
+            });
+        }
+
+        async function homeAction(action) {
+            // Require login for all actions
+            if (!msalAccount) {
+                await toggleLogin();
+                if (!msalAccount) return; // login cancelled or failed
+            }
+
+            setHomeBtnsDisabled(true);
+            setHomeStatus('');
+            try {
+                if (action === 'startNew') {
+                    await resetSpreadsheet();
+                } else if (action === 'resume') {
+                    setHomeStatus('⏳ Loading current cycle data from SharePoint…');
+                    await loadBaselineFromSharePoint();
+                    setHomeStatus('');
+                    hideHomeScreen();
+                } else if (action === 'send') {
+                    await sendNotificationEmail();
+                } else if (action === 'office') {
+                    await saveKwhRate();
+                }
+            } finally {
+                setHomeBtnsDisabled(false);
+                setHomeStatus('');
+            }
+        }
+
+        async function getToken() {
+            try {
+                const resp = await msalInstance.acquireTokenSilent({ scopes: GRAPH_SCOPES, account: msalAccount });
+                return resp.accessToken;
+            } catch (e) {
+                const resp = await msalInstance.acquireTokenPopup({ scopes: GRAPH_SCOPES });
+                return resp.accessToken;
+            }
+        }
+
+        // ── Load baseline from SharePoint ─────────────────────────
         async function loadBaselineFromSharePoint() {
             if (!msalInstance || !msalAccount) return;
             try {
@@ -767,7 +779,7 @@
                 const headers = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
 
                 const siteRes = await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_HOSTNAME}:${SP_SITE_PATH}`, { headers });
-                if (!siteRes.ok) return;
+                if (!siteRes.ok) throw new Error('Could not access SharePoint site');
                 const siteId = (await siteRes.json()).id;
 
                 const drivesRes = await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/drives`, { headers });
@@ -780,13 +792,13 @@
                     const found = ((await searchRes.json()).value || []).find(f => f.name === EXCEL_FILE);
                     if (found) { fileId = found.id; driveId = drive.id; break; }
                 }
-                if (!fileId) return;
+                if (!fileId) throw new Error(`"${EXCEL_FILE}" not found in SharePoint`);
 
                 const baseUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}`;
                 const sessionRes = await fetch(`${baseUrl}/workbook/createSession`, {
                     method: 'POST', headers, body: JSON.stringify({ persistChanges: false })
                 });
-                if (!sessionRes.ok) return;
+                if (!sessionRes.ok) throw new Error('Could not open workbook session');
                 const sessionHeaders = { ...headers, 'workbook-session-id': (await sessionRes.json()).id };
 
                 const wsData = await (await fetch(`${baseUrl}/workbook/worksheets`, { headers: sessionHeaders })).json();
@@ -797,11 +809,9 @@
                 );
                 await fetch(`${baseUrl}/workbook/closeSession`, { method: 'POST', headers: sessionHeaders });
 
-                if (!rangeRes.ok) return;
-                const rangeData = await rangeRes.json();
-                const rows = rangeData.values || [];
+                if (!rangeRes.ok) throw new Error('Could not read sheet data');
+                const rows = (await rangeRes.json()).values || [];
 
-                // Build baseline map: slip -> current reading (col C)
                 const baseline = {};
                 for (let i = 1; i < rows.length; i++) {
                     const [slip, , curr] = rows[i];
@@ -810,33 +820,68 @@
                 if (Object.keys(baseline).length > 0) {
                     saveBaseline(baseline);
                     autoFillPrev();
+                    showToast(`📋 Loaded ${Object.keys(baseline).length} previous readings`);
+                } else {
+                    showToast('⚠️ No previous readings found in spreadsheet', true);
                 }
             } catch (e) {
-                // Silent fail — baseline load is best-effort
                 console.warn('Baseline load failed:', e.message);
+                showToast('❌ Could not load data: ' + e.message, true);
+                throw e; // re-throw so homeAction can handle
             }
         }
 
-
-        // ── Office Use Only: Save PEPCO KWH Rate + readings to Electricity Report ──────
-        async function saveKwhRate() {
-            if (!msalInstance || !msalAccount) { showToast('⚠️ Please sign in first', true); return; }
-
-            // Prompt for rate
-            const input = prompt('Enter PEPCO KWH Rate (e.g. 0.1809):');
-            if (input === null) return; // cancelled
-            const rate = parseFloat(input.trim());
-            if (isNaN(rate) || rate <= 0) { showToast('⚠️ Invalid rate — please enter a number like 0.1809', true); return; }
-
-            const btn = document.getElementById('kwhBtn');
-            btn.textContent = '⏳ Connecting…';
-            btn.disabled = true;
-
+        // ── Send notification email ───────────────────────────────
+        async function sendNotificationEmail() {
+            const readings = getReadings();
             try {
+                setHomeStatus('⏳ Sending notification email…');
                 const token = await getToken();
                 const headers = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
 
-                // Find the Electricity Report in SharePoint
+                const now = new Date();
+                const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+                const toRecipients = NOTIFY_EMAILS.map(address => ({ emailAddress: { address } }));
+
+                const mailBody = {
+                    message: {
+                        subject: `CYC Dock Meter Readings Complete — ${dateStr}`,
+                        body: {
+                            contentType: 'Text',
+                            content: `CYC Dock meter readings have been completed.\n\nDate: ${dateStr}\nTime: ${timeStr}\nReadings recorded: ${readings.length}\n\nThe data is available in the CYC Dock Meter Reading spreadsheet on SharePoint.\n\nThis is an automated notification from the CYC Meter Reader app.`
+                        },
+                        toRecipients
+                    },
+                    saveToSentItems: false
+                };
+
+                const resp = await fetch('https://graph.microsoft.com/v1.0/me/sendMail', {
+                    method: 'POST', headers, body: JSON.stringify(mailBody)
+                });
+                if (!resp.ok) {
+                    const err = await resp.json();
+                    throw new Error(err.error?.message || 'Failed to send email');
+                }
+                showToast(`📧 Office notified — ${readings.length} readings on record`);
+            } catch (e) {
+                showToast('❌ Email failed: ' + e.message, true);
+            }
+        }
+
+        // ── Save PEPCO KWH Rate ───────────────────────────────────
+        async function saveKwhRate() {
+            const input = prompt('Enter PEPCO KWH Rate (e.g. 0.1809):');
+            if (input === null) return;
+            const rate = parseFloat(input.trim());
+            if (isNaN(rate) || rate <= 0) { showToast('⚠️ Invalid rate — please enter a number like 0.1809', true); return; }
+
+            try {
+                setHomeStatus('⏳ Connecting to SharePoint…');
+                const token = await getToken();
+                const headers = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+
                 const siteRes = await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_HOSTNAME}:${SP_SITE_PATH}`, { headers });
                 if (!siteRes.ok) throw new Error('Could not access SharePoint site');
                 const siteId = (await siteRes.json()).id;
@@ -853,110 +898,87 @@
                 }
                 if (!fileId) throw new Error(`"${ELEC_RPT_FILE}" not found in SharePoint`);
 
-                const baseUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}`;
+                const baseUrl  = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}`;
                 const sheetBase = `${baseUrl}/workbook/worksheets('Sheet1')`;
 
-                // Open a persistent session
                 const sessionRes = await fetch(`${baseUrl}/workbook/createSession`, {
                     method: 'POST', headers, body: JSON.stringify({ persistChanges: true })
                 });
                 if (!sessionRes.ok) throw new Error('Could not open workbook session');
                 const sessionHeaders = { ...headers, 'workbook-session-id': (await sessionRes.json()).id };
 
-                // Build date strings
                 const now = new Date();
                 const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
                 const day = String(now.getDate()).padStart(2, '0');
                 const mon = months[now.getMonth()];
                 const yr  = String(now.getFullYear()).slice(-2);
-                const colHeader = `${day}-${mon}${yr}`;   // e.g. "20-Feb26"
-
-                const dateStr = now.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
+                const colHeader = `${day}-${mon}${yr}`;
+                const dateStr   = now.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
                 const labelText = `Rate per kWH ${dateStr}`;
 
-                // Step 1: Read col B (slip IDs) rows 1–115 so we know where to put each reading
-                btn.textContent = '⏳ Reading slip list…';
+                setHomeStatus('⏳ Reading slip list…');
                 const slipRes = await fetch(`${sheetBase}/range(address='B1:B115')`, { headers: sessionHeaders });
                 if (!slipRes.ok) throw new Error('Could not read slip column from Electricity Report');
                 const slipRows = (await slipRes.json()).values || [];
 
-                // Build slip → row index map (row 1 = header, data rows 2–115)
                 const slipRowMap = {};
                 for (let i = 1; i < slipRows.length; i++) {
                     const slip = (slipRows[i][0] || '').toString().trim();
-                    if (slip) slipRowMap[slip] = i + 1; // 1-based row number
+                    if (slip) slipRowMap[slip] = i + 1;
                 }
 
-                // Step 2: Insert a new column H (col 8), pushing old H→I onward
-                btn.textContent = '⏳ Inserting new column…';
+                setHomeStatus('⏳ Inserting new column…');
                 await fetch(`${sheetBase}/columns/$/itemAt(index=7)/insert`,
                     { method: 'POST', headers: sessionHeaders, body: JSON.stringify({}) }
                 );
 
-                // Step 3: Write the date header into H1
                 await fetch(`${sheetBase}/range(address='H1')`, {
-                    method: 'PATCH',
-                    headers: sessionHeaders,
+                    method: 'PATCH', headers: sessionHeaders,
                     body: JSON.stringify({ values: [[colHeader]] })
                 });
 
-                // Step 4: Get local readings and write each into the correct row in col H
-                btn.textContent = '⏳ Writing readings…';
-                const readings = getReadings();
-
-                // Build a full H2:H115 column of values (blank where no reading)
-                const totalRows = 114; // rows 2–115
+                setHomeStatus('⏳ Writing readings…');
+                const readings  = getReadings();
+                const totalRows = 114;
                 const colValues = Array.from({ length: totalRows }, () => ['']);
 
                 let written = 0;
                 for (const r of readings) {
                     const rowNum = slipRowMap[r.meterId];
                     if (!rowNum) continue;
-                    const idx = rowNum - 2; // offset into colValues array (row 2 = index 0)
-                    // reading is stored as 5-digit trimmed value; write as number
+                    const idx = rowNum - 2;
                     const val = parseFloat(r.reading);
                     if (!isNaN(val)) { colValues[idx] = [val]; written++; }
                 }
 
                 await fetch(`${sheetBase}/range(address='H2:H115')`, {
-                    method: 'PATCH',
-                    headers: sessionHeaders,
+                    method: 'PATCH', headers: sessionHeaders,
                     body: JSON.stringify({ values: colValues })
                 });
 
-                // Step 5: Write rate label to C116 and rate value to D116
-                btn.textContent = '⏳ Saving rate…';
+                setHomeStatus('⏳ Saving rate…');
                 await fetch(`${sheetBase}/range(address='C116:D116')`, {
-                    method: 'PATCH',
-                    headers: sessionHeaders,
+                    method: 'PATCH', headers: sessionHeaders,
                     body: JSON.stringify({ values: [[labelText, rate]] })
                 });
 
                 await fetch(`${baseUrl}/workbook/closeSession`, { method: 'POST', headers: sessionHeaders });
 
                 showToast(`⚡ "${colHeader}" column added · ${written} readings written · Rate $${rate}/KWH saved`);
-
             } catch (e) {
                 showToast('❌ ' + e.message, true);
-            } finally {
-                btn.textContent = '⚡ Enter PEPCO KWH Rate';
-                btn.disabled = !msalAccount;
             }
         }
 
+        // ── Reset Spreadsheet (Start New Month) ───────────────────
         async function resetSpreadsheet() {
-            if (!msalInstance || !msalAccount) { showToast('⚠️ Please sign in first', true); return; }
-            if (!confirm('⚠️ This will save the current data to a new dated Excel file, then clear the main sheet for a new cycle.\n\nContinue?')) return;
-
-            const btn = document.getElementById('resetSheetBtn');
-            btn.textContent = '⏳ Archiving…';
-            btn.disabled = true;
+            if (!confirm('⚠️ This will archive the current data and start a new billing cycle.\n\nContinue?')) return;
 
             try {
+                setHomeStatus('⏳ Connecting to SharePoint…');
                 const token = await getToken();
                 const headers = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
 
-                // Locate the site, drive, and main file
                 const siteRes = await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_HOSTNAME}:${SP_SITE_PATH}`, { headers });
                 if (!siteRes.ok) throw new Error('Could not access SharePoint site');
                 const siteId = (await siteRes.json()).id;
@@ -964,67 +986,41 @@
                 const drivesRes = await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/drives`, { headers });
                 const siteDrives = (await drivesRes.json()).value || [];
 
-                let fileId = null, driveId = null, fileParentPath = null;
+                let fileId = null, driveId = null;
                 for (const drive of siteDrives) {
                     const searchRes = await fetch(`https://graph.microsoft.com/v1.0/drives/${drive.id}/root/search(q='CYC Dock Meter Reading')`, { headers });
                     if (!searchRes.ok) continue;
                     const found = ((await searchRes.json()).value || []).find(f => f.name === EXCEL_FILE);
-                    if (found) {
-                        fileId = found.id;
-                        driveId = drive.id;
-                        // Get parent folder path from parentReference
-                        fileParentPath = found.parentReference?.path || null;
-                        break;
-                    }
+                    if (found) { fileId = found.id; driveId = drive.id; break; }
                 }
                 if (!fileId) throw new Error(`"${EXCEL_FILE}" not found in SharePoint`);
 
                 const baseUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}`;
 
-                // Open session on main file
                 const sessionRes = await fetch(`${baseUrl}/workbook/createSession`, {
                     method: 'POST', headers, body: JSON.stringify({ persistChanges: true })
                 });
                 if (!sessionRes.ok) throw new Error('Could not open workbook session');
                 const sessionHeaders = { ...headers, 'workbook-session-id': (await sessionRes.json()).id };
 
-                // Get main sheet name
                 const wsData = await (await fetch(`${baseUrl}/workbook/worksheets`, { headers: sessionHeaders })).json();
                 if (!wsData.value || !wsData.value.length) throw new Error('No worksheets found');
                 const sheetName = wsData.value[0].name;
                 const sheetBase = `${baseUrl}/workbook/worksheets('${encodeURIComponent(sheetName)}')`;
 
-                // Step 1: Read current data
-                btn.textContent = '⏳ Reading data…';
+                setHomeStatus('⏳ Reading current data…');
                 const readRes = await fetch(`${sheetBase}/range(address='A1:G122')`, { headers: sessionHeaders });
                 if (!readRes.ok) throw new Error('Could not read main sheet');
-                const existingValues = (await readRes.json()).values || [];
 
-                // Find last non-empty row
-                let lastRow = 0;
-                for (let i = existingValues.length - 1; i >= 0; i--) {
-                    if (existingValues[i].some(c => c !== '' && c !== null)) { lastRow = i + 1; break; }
-                }
-
-                // Step 2: Copy main file into "Meter Archive" subfolder (create if needed)
-                btn.textContent = '⏳ Creating archive file…';
-                const now = new Date();
-                const pad = n => String(n).padStart(2, '0');
-                const dateStamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}${pad(now.getMinutes())}`;
-                const archiveFileName = `CYC Meter Archive ${dateStamp}.xlsx`;
-
-                // Get the parent folder item id
+                // Archive file
+                setHomeStatus('⏳ Locating archive folder…');
                 const mainItemRes = await fetch(baseUrl, { headers });
                 if (!mainItemRes.ok) throw new Error('Could not get file info');
                 const mainItem = await mainItemRes.json();
                 const parentId = mainItem.parentReference?.id;
                 if (!parentId) throw new Error('Could not determine parent folder');
 
-                // Find or create "Meter Archive" subfolder inside the parent folder
-                btn.textContent = '⏳ Locating archive folder…';
                 let archiveFolderId = null;
-
-                // Try to get the folder by name
                 const folderCheckRes = await fetch(
                     `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${parentId}/children?$filter=name eq 'Meter Archive'`,
                     { headers }
@@ -1035,22 +1031,13 @@
                     if (existing) archiveFolderId = existing.id;
                 }
 
-                // If not found, create it
                 if (!archiveFolderId) {
-                    btn.textContent = '⏳ Creating Meter Archive folder…';
+                    setHomeStatus('⏳ Creating Meter Archive folder…');
                     const mkdirRes = await fetch(
                         `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${parentId}/children`,
-                        {
-                            method: 'POST', headers,
-                            body: JSON.stringify({
-                                name: 'Meter Archive',
-                                folder: {},
-                                '@microsoft.graph.conflictBehavior': 'fail'
-                            })
-                        }
+                        { method: 'POST', headers, body: JSON.stringify({ name: 'Meter Archive', folder: {}, '@microsoft.graph.conflictBehavior': 'fail' }) }
                     );
                     if (!mkdirRes.ok) {
-                        // May have failed because it already exists — try fetching again
                         const retryRes = await fetch(
                             `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${parentId}/children?$filter=name eq 'Meter Archive'`,
                             { headers }
@@ -1066,24 +1053,24 @@
                     }
                 }
 
-                // Copy the file into the Meter Archive folder
-                btn.textContent = '⏳ Creating archive file…';
+                setHomeStatus('⏳ Copying to archive…');
+                const now = new Date();
+                const pad = n => String(n).padStart(2, '0');
+                const dateStamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}${pad(now.getMinutes())}`;
+                const archiveFileName = `CYC Meter Archive ${dateStamp}.xlsx`;
+
                 const copyRes = await fetch(`${baseUrl}/copy`, {
                     method: 'POST', headers,
-                    body: JSON.stringify({
-                        parentReference: { driveId, id: archiveFolderId },
-                        name: archiveFileName
-                    })
+                    body: JSON.stringify({ parentReference: { driveId, id: archiveFolderId }, name: archiveFileName })
                 });
                 if (!copyRes.ok) {
                     const e = await copyRes.json();
                     throw new Error('Could not create archive file: ' + (e.error?.message || copyRes.status));
                 }
 
-                // The copy is async — wait for it to complete (poll the monitor URL)
                 const monitorUrl = copyRes.headers.get('Location');
                 if (monitorUrl) {
-                    btn.textContent = '⏳ Waiting for archive…';
+                    setHomeStatus('⏳ Waiting for archive to complete…');
                     for (let i = 0; i < 20; i++) {
                         await new Promise(r => setTimeout(r, 1500));
                         const pollRes = await fetch(monitorUrl);
@@ -1094,8 +1081,7 @@
                     }
                 }
 
-                // Step 3: Clear main sheet and write fresh header
-                btn.textContent = '⏳ Clearing main sheet…';
+                setHomeStatus('⏳ Clearing main sheet…');
                 await fetch(`${sheetBase}/range(address='A1:G122')/clear`,
                     { method: 'POST', headers: sessionHeaders, body: JSON.stringify({ applyTo: 'contents' }) }
                 );
@@ -1106,8 +1092,8 @@
 
                 await fetch(`${baseUrl}/workbook/closeSession`, { method: 'POST', headers: sessionHeaders });
 
-                // Step 4: Read col B (slip) + col H (last month reading) from Electricity Report
-                btn.textContent = '⏳ Loading previous readings…';
+                // Load new baseline from Electricity Report
+                setHomeStatus('⏳ Loading previous readings from Electricity Report…');
                 let elecFileId = null, elecDriveId = null;
                 for (const drive of siteDrives) {
                     const searchRes = await fetch(`https://graph.microsoft.com/v1.0/drives/${drive.id}/root/search(q='Electricity Report')`, { headers });
@@ -1117,20 +1103,16 @@
                 }
 
                 if (!elecFileId) {
-                    // Not fatal — just warn and continue with empty baseline
-                    showToast(`✅ Archived to "${archiveFileName}" — could not find Electricity Report for baseline`, true);
+                    showToast(`✅ Archived to "${archiveFileName}" — Electricity Report not found`, true);
                     saveBaseline({});
                 } else {
                     const elecBase = `https://graph.microsoft.com/v1.0/drives/${elecDriveId}/items/${elecFileId}`;
-
-                    // Open read-only session on Electricity Report
                     const elecSessionRes = await fetch(`${elecBase}/workbook/createSession`, {
                         method: 'POST', headers, body: JSON.stringify({ persistChanges: false })
                     });
                     if (!elecSessionRes.ok) throw new Error('Could not open Electricity Report session');
                     const elecSessionHeaders = { ...headers, 'workbook-session-id': (await elecSessionRes.json()).id };
 
-                    // Read cols B and H, rows 2–115 (slip + last month reading)
                     const elecRange = await fetch(
                         `${elecBase}/workbook/worksheets('Sheet1')/range(address='B2:H115')`,
                         { headers: elecSessionHeaders }
@@ -1140,96 +1122,181 @@
                     if (!elecRange.ok) throw new Error('Could not read Electricity Report range');
                     const elecRows = (await elecRange.json()).values || [];
 
-                    // Col B is index 0, Col H is index 6 (B,C,D,E,F,G,H = 0..6)
                     const baseline = {};
                     for (const row of elecRows) {
-                        const slip = (row[0] || '').toString().trim();
+                        const slip    = (row[0] || '').toString().trim();
                         const reading = row[6]; // col H
-                        if (slip && reading !== '' && reading !== null) {
-                            baseline[slip] = reading;
-                        }
+                        if (slip && reading !== '' && reading !== null) baseline[slip] = reading;
                     }
-
                     saveBaseline(baseline);
                     const count = Object.keys(baseline).length;
-                    showToast(`✅ Archived → "${archiveFileName}" · ${count} previous readings loaded from Electricity Report`);
+                    showToast(`✅ Archived · ${count} previous readings loaded`);
                 }
 
-                // Clear local readings and refresh display
                 saveReadings([]);
                 autoFillPrev();
-                renderTable();
+                renderCount();
+                hideHomeScreen();
 
             } catch (e) {
                 console.error('Reset error:', e);
                 showToast('❌ Reset failed: ' + e.message, true);
+            }
+        }
+
+        // ── Sync to OneDrive ──────────────────────────────────────
+        async function syncToOneDrive(silent = false) {
+            const readings = getReadings();
+            if (!readings.length) {
+                if (!silent) showToast('⚠️ No new readings to sync', true);
+                return;
+            }
+
+            try {
+                if (!silent) setHomeStatus('⏳ Connecting to SharePoint…');
+                const token = await getToken();
+                const headers = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+
+                const siteRes = await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_HOSTNAME}:${SP_SITE_PATH}`, { headers });
+                if (!siteRes.ok) {
+                    const e = await siteRes.json();
+                    throw new Error('Could not access SharePoint site: ' + (e.error?.message || siteRes.status));
+                }
+                const siteId = (await siteRes.json()).id;
+
+                const drivesRes = await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/drives`, { headers });
+                const siteDrives = (await drivesRes.json()).value || [];
+
+                let fileId = null, driveId = null;
+                for (const drive of siteDrives) {
+                    const searchRes = await fetch(`https://graph.microsoft.com/v1.0/drives/${drive.id}/root/search(q='CYC Dock Meter Reading')`, { headers });
+                    if (!searchRes.ok) continue;
+                    const searchData = await searchRes.json();
+                    const found = (searchData.value || []).find(f => f.name === EXCEL_FILE);
+                    if (found) { fileId = found.id; driveId = drive.id; break; }
+                }
+                if (!fileId) {
+                    const driveNames = siteDrives.map(d => d.name).join(', ');
+                    throw new Error(`"${EXCEL_FILE}" not found in site drives: [${driveNames}]`);
+                }
+
+                const baseUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}`;
+                const sessionRes = await fetch(`${baseUrl}/workbook/createSession`, {
+                    method: 'POST', headers, body: JSON.stringify({ persistChanges: true })
+                });
+                if (!sessionRes.ok) {
+                    const e = await sessionRes.json();
+                    throw new Error('Could not open workbook session: ' + (e.error?.message || sessionRes.status));
+                }
+                const sessionHeaders = { ...headers, 'workbook-session-id': (await sessionRes.json()).id };
+
+                if (!silent) setHomeStatus('⏳ Reading existing data…');
+                const wsRes  = await fetch(`${baseUrl}/workbook/worksheets`, { headers: sessionHeaders });
+                const wsData = await wsRes.json();
+                if (!wsData.value || !wsData.value.length) throw new Error('No worksheets found in workbook');
+                const sheetName = wsData.value[0].name;
+                const sheetBase = `${baseUrl}/workbook/worksheets('${sheetName}')`;
+
+                const existingRes  = await fetch(`${sheetBase}/range(address='A1:G122')`, { headers: sessionHeaders });
+                const existingRows = existingRes.ok ? ((await existingRes.json()).values || []) : [];
+
+                const excelMap = {};
+                for (let i = 1; i < existingRows.length; i++) {
+                    const [slip, prev, curr, usage, date, time, notes] = existingRows[i];
+                    const key = String(slip || '').trim();
+                    if (key) excelMap[key] = { prev, curr, usage, date, time, notes };
+                }
+
+                const newMap = {};
+                readings.forEach(r => { newMap[r.meterId] = r; });
+
+                const canonicalSlips = [...walkOrder];
+                Object.keys(excelMap).forEach(slip => { if (!canonicalSlips.includes(slip)) canonicalSlips.push(slip); });
+                canonicalSlips.sort();
+
+                const rows = [
+                    ['Slip', 'Previous Reading', 'Current Reading', 'Usage', 'Date', 'Time', 'Notes'],
+                    ...canonicalSlips.map(slip => {
+                        if (newMap[slip]) {
+                            const r = newMap[slip];
+                            const exCurr = excelMap[slip]?.curr;
+                            const prev = (exCurr !== undefined && exCurr !== '' && exCurr !== null)
+                                ? exCurr : (r.prevReading || '');
+                            const usage = (prev !== '' && !isNaN(prev) && !isNaN(r.reading))
+                                ? (parseFloat(r.reading) - parseFloat(prev)).toFixed(0) : '';
+                            return [slip, prev, r.reading, usage, r.date, r.time, r.notes || ''];
+                        } else if (excelMap[slip]) {
+                            const e = excelMap[slip];
+                            return [slip, e.prev ?? '', e.curr ?? '', e.usage ?? '', e.date ?? '', e.time ?? '', e.notes ?? ''];
+                        } else {
+                            return [slip, '', '', '', '', '', ''];
+                        }
+                    })
+                ];
+
+                if (!silent) setHomeStatus('⏳ Writing to Excel…');
+                await fetch(`${sheetBase}/range(address='A1:G122')/clear`,
+                    { method: 'POST', headers: sessionHeaders, body: JSON.stringify({ applyTo: 'contents' }) }
+                );
+
+                const writeRange = `A1:G${rows.length}`;
+                const updateRes = await fetch(
+                    `${sheetBase}/range(address='${writeRange}')`,
+                    { method: 'PATCH', headers: sessionHeaders, body: JSON.stringify({ values: rows }) }
+                );
+                if (!updateRes.ok) {
+                    const err = await updateRes.json();
+                    throw new Error(err.error?.message || 'Failed to write to Excel');
+                }
+
+                await fetch(`${baseUrl}/workbook/closeSession`, { method: 'POST', headers: sessionHeaders });
+
+                const newBaseline = {};
+                rows.slice(1).forEach(([slip, , curr]) => { if (slip && curr !== '') newBaseline[slip] = curr; });
+                saveBaseline(newBaseline);
+
+                if (silent) {
+                    console.log(`[auto-sync] ${rows.length - 1} slips written to SharePoint`);
+                } else {
+                    showToast(`☁️ Synced ${rows.length - 1} slips to SharePoint!`);
+                }
+            } catch (e) {
+                console.error('Sync error:', e);
+                if (!silent) showToast('❌ Sync failed: ' + e.message, true);
+            }
+        }
+
+        // ── Auto-sync ─────────────────────────────────────────────
+        const AUTO_SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
+        async function runAutoSync() {
+            if (syncBusy || !msalAccount) return;
+            syncBusy = true;
+            try {
+                await syncToOneDrive(true); // silent
             } finally {
-                btn.textContent = '📋 Start New Bill Readings';
-                btn.disabled = false;
+                syncBusy = false;
             }
         }
 
-        function updateLoginUI() {
-            const label = document.getElementById('msUserLabel');
-            const btn = document.getElementById('msLoginBtn');
-            const syncBtn = document.getElementById('syncBtn');
-            const resetBtn = document.getElementById('resetSheetBtn');
-            const kwhBtn = document.getElementById('kwhBtn');
-            if (msalAccount) {
-                label.innerHTML = `Signed in: <span>${msalAccount.username}</span>`;
-                btn.textContent = 'Sign Out';
-                btn.onclick = msLogout;
-                syncBtn.disabled = false;
-                if (resetBtn) resetBtn.disabled = false;
-                if (kwhBtn) kwhBtn.disabled = false;
-            } else {
-                label.textContent = 'Not signed in to Microsoft';
-                btn.textContent = 'Sign In';
-                btn.onclick = msLogin;
-                syncBtn.disabled = true;
-                if (resetBtn) resetBtn.disabled = true;
-                if (kwhBtn) kwhBtn.disabled = true;
-            }
+        function startAutoSync() {
+            if (autoSyncTimer) return; // already running
+            autoSyncTimer = setInterval(runAutoSync, AUTO_SYNC_INTERVAL_MS);
+            console.log('[auto-sync] started — every 5 minutes');
         }
 
-        async function msLogin() {
-            if (!msalInstance) { showToast('❌ Login library not ready yet', true); return; }
-            try {
-                const resp = await msalInstance.loginPopup({ scopes: GRAPH_SCOPES });
-                msalAccount = resp.account;
-                updateLoginUI();
-            } catch (e) {
-                console.error('Login error:', e);
-                showToast('❌ Sign in failed: ' + e.message, true);
-            }
-        }
-
-        async function msLogout() {
-            try {
-                await msalInstance.logoutPopup({ account: msalAccount });
-                msalAccount = null;
-                updateLoginUI();
-            } catch (e) {
-                console.error('Logout error:', e);
-            }
-        }
-
-        async function getToken() {
-            try {
-                const resp = await msalInstance.acquireTokenSilent({ scopes: GRAPH_SCOPES, account: msalAccount });
-                return resp.accessToken;
-            } catch (e) {
-                const resp = await msalInstance.acquireTokenPopup({ scopes: GRAPH_SCOPES });
-                return resp.accessToken;
+        function stopAutoSync() {
+            if (autoSyncTimer) {
+                clearInterval(autoSyncTimer);
+                autoSyncTimer = null;
+                console.log('[auto-sync] stopped');
             }
         }
 
         // ── Voice input ───────────────────────────────────────────
-        // Uses continuous mode + auto-restart on end so it stays open until
-        // the user taps Stop or a valid 6-digit number is captured.
         let voiceRecognition = null;
-        let voiceListening = false;
-        let voiceGotResult = false; // flag: don't restart if we already captured a number
+        let voiceListening   = false;
+        let voiceGotResult   = false;
 
         (function initVoice() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1244,50 +1311,43 @@
             rec.lang = 'en-US';
             rec.interimResults = false;
             rec.maxAlternatives = 5;
-            rec.continuous = true; // keep mic open across pauses
+            rec.continuous = true;
 
             rec.onresult = (e) => {
-                // Walk all new results (continuous mode accumulates them)
                 for (let ri = e.resultIndex; ri < e.results.length; ri++) {
                     if (!e.results[ri].isFinal) continue;
-                    // Try each alternative until we find a clean 6-digit number
                     for (let ai = 0; ai < e.results[ri].length; ai++) {
-                        const raw = e.results[ri][ai].transcript.trim();
-                        const digits = raw.replace(/[\s,]/g, '');
+                        const raw     = e.results[ri][ai].transcript.trim();
+                        const digits  = raw.replace(/[\s,]/g, '');
                         const stripped = raw.replace(/\D/g, '');
                         const best = /^\d{6}$/.test(digits) ? digits
                                    : /^\d{6}$/.test(stripped) ? stripped : null;
                         if (best) {
                             voiceGotResult = true;
-                            setMeterBuffer(best); // fills buffer and updates display
+                            setMeterBuffer(best);
                             showToast(`🎤 Got: ${best}`);
                             stopVoice();
                             return;
                         }
                     }
-                    // Heard something but couldn't parse — show feedback and keep listening
                     const heard = e.results[ri][0].transcript;
                     showToast(`🎤 Heard "${heard}" — listening…`, false);
                 }
             };
 
             rec.onerror = (e) => {
-                // 'no-speech' is normal on mobile (short silence timeout) — just restart
-                if (e.error === 'no-speech') return; // onend will restart automatically
-                if (e.error === 'aborted') return;    // intentional stop
+                if (e.error === 'no-speech') return;
+                if (e.error === 'aborted') return;
                 showToast('🎤 ' + (e.error === 'not-allowed'
                     ? 'Microphone permission denied'
                     : 'Voice error: ' + e.error), true);
                 stopVoice();
             };
 
-            // Auto-restart: mobile browsers stop after a short silence even in continuous mode.
-            // As long as we're still supposed to be listening, kick it back on.
             rec.onend = () => {
                 if (voiceListening && !voiceGotResult) {
                     try { rec.start(); } catch(e) { stopVoice(); }
                 } else {
-                    // Clean up visual state if something externally ended it
                     voiceListening = false;
                     const micBtn = document.getElementById('micBtn');
                     micBtn.classList.remove('listening');
@@ -1316,165 +1376,6 @@
             micBtn.classList.remove('listening');
             micBtn.textContent = '🎤';
             try { voiceRecognition && voiceRecognition.stop(); } catch(e) {}
-        }
-
-        async function syncToOneDrive() {
-            if (!msalInstance || !msalAccount) { showToast('⚠️ Please sign in first', true); return; }
-            const readings = getReadings();
-            if (!readings.length) { showToast('⚠️ No new readings to sync', true); return; }
-
-            const btn = document.getElementById('syncBtn');
-            btn.textContent = '⏳ Syncing…';
-            btn.disabled = true;
-
-            try {
-                const token = await getToken();
-                const headers = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
-
-                // Step 1: Get the SharePoint site by hostname + site path
-                const siteRes = await fetch(
-                    `https://graph.microsoft.com/v1.0/sites/${SP_HOSTNAME}:${SP_SITE_PATH}`,
-                    { headers }
-                );
-                if (!siteRes.ok) {
-                    const e = await siteRes.json();
-                    throw new Error('Could not access SharePoint site: ' + (e.error?.message || siteRes.status));
-                }
-                const siteData = await siteRes.json();
-                const siteId = siteData.id;
-
-                // Step 2: Get all document library drives for this site
-                const drivesRes = await fetch(
-                    `https://graph.microsoft.com/v1.0/sites/${siteId}/drives`,
-                    { headers }
-                );
-                const drivesData = await drivesRes.json();
-                const siteDrives = drivesData.value || [];
-                // find Documents library
-
-                // Step 3: Search each drive for the Excel file by name
-                let fileId = null;
-                let driveId = null;
-                for (const drive of siteDrives) {
-                    const searchRes = await fetch(
-                        `https://graph.microsoft.com/v1.0/drives/${drive.id}/root/search(q='CYC Dock Meter Reading')`,
-                        { headers }
-                    );
-                    if (!searchRes.ok) continue;
-                    const searchData = await searchRes.json();
-                    const found = (searchData.value || []).find(f => f.name === EXCEL_FILE);
-                    if (found) {
-                        fileId = found.id;
-                        driveId = drive.id;
-                        break;
-                    }
-                }
-
-                if (!fileId) {
-                    const driveNames = siteDrives.map(d => d.name).join(', ');
-                    throw new Error(`"${EXCEL_FILE}" not found in site drives: [${driveNames}]`);
-                }
-
-                const baseUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}`;
-
-                // Step 4: Create a workbook session (required for SharePoint-hosted xlsx)
-                const sessionRes = await fetch(`${baseUrl}/workbook/createSession`, {
-                    method: 'POST', headers,
-                    body: JSON.stringify({ persistChanges: true })
-                });
-                if (!sessionRes.ok) {
-                    const e = await sessionRes.json();
-                    throw new Error('Could not open workbook session: ' + (e.error?.message || sessionRes.status));
-                }
-                const sessionData = await sessionRes.json();
-                const sessionHeaders = { ...headers, 'workbook-session-id': sessionData.id };
-
-                // Step 5: Get worksheet name
-                const wsRes = await fetch(`${baseUrl}/workbook/worksheets`, { headers: sessionHeaders });
-                const wsData = await wsRes.json();
-                if (!wsData.value || !wsData.value.length) throw new Error('No worksheets found in workbook');
-                const sheetName = wsData.value[0].name;
-                const sheetBase = `${baseUrl}/workbook/worksheets('${sheetName}')`;
-
-                // Step 6: Read existing Excel data (cols A-G)
-                const existingRes = await fetch(`${sheetBase}/range(address='A1:G122')`, { headers: sessionHeaders });
-                const existingData = existingRes.ok ? await existingRes.json() : null;
-                const existingRows = existingData?.values || [];
-
-                // Build map: slip -> existing row data
-                const excelMap = {};
-                for (let i = 1; i < existingRows.length; i++) {
-                    const [slip, prev, curr, usage, date, time, notes] = existingRows[i];
-                    const key = String(slip || '').trim();
-                    if (key) excelMap[key] = { prev, curr, usage, date, time, notes };
-                }
-
-                // Build map of new local readings
-                const newMap = {};
-                readings.forEach(r => { newMap[r.meterId] = r; });
-
-                // Build canonical slip list from walk order (sorted for Excel output)
-                const canonicalSlips = [...walkOrder];
-                // Add any extra slips only in Excel (e.g. from old data)
-                Object.keys(excelMap).forEach(slip => { if (!canonicalSlips.includes(slip)) canonicalSlips.push(slip); });
-                canonicalSlips.sort();
-
-                const rows = [
-                    ['Slip', 'Previous Reading', 'Current Reading', 'Usage', 'Date', 'Time', 'Notes'],
-                    ...canonicalSlips.map(slip => {
-                        if (newMap[slip]) {
-                            // New reading this cycle — Excel current becomes new previous
-                            const r = newMap[slip];
-                            const exCurr = excelMap[slip]?.curr;
-                            const prev = (exCurr !== undefined && exCurr !== '' && exCurr !== null)
-                                ? exCurr : (r.prevReading || '');
-                            const usage = (prev !== '' && !isNaN(prev) && !isNaN(r.reading))
-                                ? (parseFloat(r.reading) - parseFloat(prev)).toFixed(0) : '';
-                            return [slip, prev, r.reading, usage, r.date, r.time, r.notes || ''];
-                        } else if (excelMap[slip]) {
-                            // No new reading — keep existing Excel row unchanged
-                            const e = excelMap[slip];
-                            return [slip, e.prev ?? '', e.curr ?? '', e.usage ?? '', e.date ?? '', e.time ?? '', e.notes ?? ''];
-                        } else {
-                            // Slip with no data at all — blank row
-                            return [slip, '', '', '', '', '', ''];
-                        }
-                    })
-                ];
-
-                // Step 7: Clear and rewrite entire sheet cleanly
-                await fetch(`${sheetBase}/range(address='A1:G122')/clear`,
-                    { method: 'POST', headers: sessionHeaders, body: JSON.stringify({ applyTo: 'contents' }) }
-                );
-
-                const writeRange = `A1:G${rows.length}`;
-                const updateRes = await fetch(
-                    `${sheetBase}/range(address='${writeRange}')`,
-                    { method: 'PATCH', headers: sessionHeaders, body: JSON.stringify({ values: rows }) }
-                );
-
-                if (!updateRes.ok) {
-                    const err = await updateRes.json();
-                    throw new Error(err.error?.message || 'Failed to write to Excel');
-                }
-
-                // Close the session
-                await fetch(`${baseUrl}/workbook/closeSession`, { method: 'POST', headers: sessionHeaders });
-
-                // Update local baseline: slip -> current reading now in SharePoint
-                const newBaseline = {};
-                rows.slice(1).forEach(([slip, , curr]) => { if (slip && curr !== '') newBaseline[slip] = curr; });
-                saveBaseline(newBaseline);
-
-                const syncedCount = rows.length - 1; // exclude header
-                showToast(`☁️ Synced ${syncedCount} slips to SharePoint!`);
-            } catch (e) {
-                console.error('Sync error:', e);
-                showToast('❌ Sync failed: ' + e.message, true);
-            } finally {
-                btn.textContent = '☁️ Save to OneDrive Excel';
-                btn.disabled = false;
-            }
         }
     </script>
 </body>

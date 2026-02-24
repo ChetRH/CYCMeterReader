@@ -1,0 +1,83 @@
+CYC METER READER — PROJECT REFERENCE
+=====================================
+
+RESUME WITH CLAUDE
+------------------
+Start a new Claude session and say:
+"Resume my CYC Meter Reader project — it's at https://github.com/ChetRH/CYCMeterReader"
+
+
+PROJECT LINKS
+-------------
+GitHub Repository : https://github.com/ChetRH/CYCMeterReader
+Live App          : https://chetRH.github.io/CYCMeterReader/
+
+
+SHAREPOINT / MICROSOFT
+-----------------------
+SharePoint Site   : capitalyachtclubcom.sharepoint.com/sites/DockOperations
+Meter Reading File: CYC Dock Meter Reading.xlsx
+Electricity Report: Electricity Report.xlsx
+Archive Folder    : Meter Archive  (subfolder, auto-created)
+Azure Client ID   : 7df5213e-e0a0-4fff-ad01-69e83d7cb6f5
+
+
+ELECTRICITY REPORT LAYOUT
+--------------------------
+Col B  : Slip ID (A01, B03, etc.)
+Col H  : Most recent month's meter readings (new column inserted each cycle)
+Col H1 : Column header format — DD-MMMYYexample: 20-Feb26
+C116   : Rate per kWH label + date  (e.g. "Rate per kWH 2/20/2026")
+D116   : PEPCO KWH rate value       (e.g. 0.1809)
+
+
+APP WORKFLOW
+------------
+1. START NEW BILL READINGS
+   - Archives current meter file to "Meter Archive" folder with date/time stamp
+   - Clears the main sheet
+   - Loads col H from Electricity Report as Previous Readings baseline
+
+2. METER READING (Dock walkers)
+   - Navigate by dock (A / B / C) and slip arrows
+   - Enter 6-digit reading via keyboard, voice mic, or calculator-style input
+   - Previous reading is locked from baseline — does not change during cycle
+   - Current reading persists in field until new cycle starts
+   - Save & Next advances to next slip in walk order
+
+3. SAVE TO ONEDRIVE EXCEL
+   - Writes all readings to CYC Dock Meter Reading.xlsx on SharePoint
+
+4. OFFICE USE ONLY — ENTER PEPCO KWH RATE
+   - Prompts for rate (e.g. 0.1809)
+   - Inserts a new column H in Electricity Report with today's date as header
+   - Writes each slip's current reading into that column
+   - Saves rate and date to C116 / D116
+
+
+DOCK WALK ORDER
+---------------
+A Dock : A01→A35 (odd, out), A30→A02 (even, back)
+B Dock : B01→B29 (odd, out), B28→B04 (even, back)  [no B02]
+C Dock : C03→C27 (odd, out), C36→C02 (even, back)  [no C01]
+
+
+METER READING RULES
+--------------------
+- Capture 6 digits from meter
+- Discard the last digit before saving (stored as 5 digits)
+- Display uses leading zeros + trailing 0 to show 6 digits
+  Example: stored 4510 displays as 045100
+
+
+CURRENT VERSION
+---------------
+Ver 1.4 — 2/23/2026
+
+CHANGES IN 1.4
+--------------
+- Send to Office: now emails notification to office staff (no longer manually syncs)
+- Auto-sync: readings automatically sync to SharePoint Excel every 5 minutes while signed in
+  (supports multiple devices reading simultaneously)
+- Email recipients: gm, office, ITChair, Assistant, DM @capitalyachtclub.com
+- Mail.Send permission added to Microsoft login scope
