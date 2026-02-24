@@ -72,7 +72,13 @@ METER READING RULES
 
 CURRENT VERSION
 ---------------
-Ver 1.4.7 — 2/23/2026
+Ver 1.4.8 — 2/23/2026
+
+CHANGES IN 1.4.8
+----------------
+- Previous readings that are already 6 digits (e.g. from Electricity Report)
+  are now displayed as-is without appending an extra trailing zero
+  (5-digit stored values still pad to 5 + trailing 0 as before)
 
 CHANGES IN 1.4.7
 ----------------

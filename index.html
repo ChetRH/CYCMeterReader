@@ -322,7 +322,7 @@
             IT Chair only (uncheck to email all office staff)
         </label>
 
-        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.4.7 &nbsp;2/23/2026</div>
+        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.4.8 &nbsp;2/23/2026</div>
     </div>
 
     <!-- ══ METER READING UI ════════════════════════════════════════ -->
@@ -528,7 +528,8 @@
             if (val === '' || val === null || val === undefined) return '';
             const s = val.toString().trim().replace(/\D/g, '');
             if (s === '') return '';
-            return s.padStart(5, '0') + '0';
+            if (s.length >= 6) return s.padStart(6, '0'); // already 6 digits — use as-is
+            return s.padStart(5, '0') + '0';              // 5 or fewer digits — pad to 5 + trailing 0
         }
 
         // ── Toast ─────────────────────────────────────────────────
