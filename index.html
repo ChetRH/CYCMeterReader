@@ -1528,6 +1528,11 @@
         let voiceListening   = false;
         let voiceGotResult   = false;
 
+        // iOS (Safari / Chrome-on-iOS via WKWebView) re-prompts for mic permission
+        // on every rec.start() call, so we must never auto-restart there.
+        const isIOS = /iP(ad|hone|od)/i.test(navigator.userAgent) ||
+                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
         (function initVoice() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             const micBtn = document.getElementById('micBtn');
@@ -1575,13 +1580,17 @@
             };
 
             rec.onend = () => {
-                if (voiceListening && !voiceGotResult) {
+                // On iOS every rec.start() triggers a new permission prompt, so
+                // never auto-restart — just stop and let the user tap mic again.
+                if (voiceListening && !voiceGotResult && !isIOS) {
                     try { rec.start(); } catch(e) { stopVoice(); }
                 } else {
                     voiceListening = false;
                     const micBtn = document.getElementById('micBtn');
                     micBtn.classList.remove('listening');
                     micBtn.textContent = '🎤';
+                    if (isIOS && !voiceGotResult)
+                        showToast('🎤 No reading heard — tap mic to try again', false);
                 }
             };
 
