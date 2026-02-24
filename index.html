@@ -276,6 +276,7 @@
         <div class="ms-login-bar" style="margin-bottom:24px;">
             <div style="color:#aaa; font-size:0.9rem;">Your initials <span style="color:#555;font-size:0.8rem;">(saved with each reading)</span></div>
             <input type="text" id="initialsInput" maxlength="4" placeholder="e.g. CRH"
+                autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" inputmode="text"
                 style="width:76px; padding:8px 10px; font-size:1.1rem; font-weight:bold; background:#0f3460; border:2px solid #1a4a80; border-radius:8px; color:#4fc3f7; text-align:center; text-transform:uppercase; letter-spacing:3px; outline:none;">
         </div>
 
@@ -321,7 +322,7 @@
             IT Chair only (uncheck to email all office staff)
         </label>
 
-        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.4.4 &nbsp;2/23/2026</div>
+        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.4.5 &nbsp;2/23/2026</div>
     </div>
 
     <!-- ══ METER READING UI ════════════════════════════════════════ -->
@@ -660,8 +661,7 @@
         const initialsEl = document.getElementById('initialsInput');
         initialsEl.value = getInitials();
         initialsEl.addEventListener('input', function () {
-            this.value = this.value.toUpperCase();
-            saveInitials(this.value);
+            saveInitials(this.value); // CSS text-transform:uppercase handles display; saveInitials() uppercases before storing
         });
 
         // ── Microsoft / SharePoint ────────────────────────────────

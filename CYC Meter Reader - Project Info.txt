@@ -72,7 +72,16 @@ METER READING RULES
 
 CURRENT VERSION
 ---------------
-Ver 1.4.4 — 2/23/2026
+Ver 1.4.5 — 2/23/2026
+
+CHANGES IN 1.4.5
+----------------
+- Fixed initials input not accepting keyboard input on mobile
+  Root cause: input event handler was mutating this.value mid-event,
+  which breaks Android/iOS IME input (swallowed chars, dismissed keyboard)
+- Added autocomplete/autocorrect/autocapitalize/spellcheck attributes
+  so mobile keyboards work correctly and show caps layout by default
+- CSS text-transform:uppercase now handles display; saveInitials() uppercases on store
 
 CHANGES IN 1.4.4
 ----------------
