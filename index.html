@@ -322,7 +322,7 @@
             IT Chair only (uncheck to email all office staff)
         </label>
 
-        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.4.5 &nbsp;2/23/2026</div>
+        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.4.6 &nbsp;2/23/2026</div>
     </div>
 
     <!-- ══ METER READING UI ════════════════════════════════════════ -->
@@ -800,6 +800,8 @@
         }
 
         // ── Load baseline from SharePoint ─────────────────────────
+        // Baseline always comes from Electricity Report col H (locked for the billing cycle).
+        // Also pulls current-cycle readings from the meter file into localStorage.
         async function loadBaselineFromSharePoint() {
             if (!msalInstance || !msalAccount) return;
             try {
@@ -813,45 +815,104 @@
                 const drivesRes = await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/drives`, { headers });
                 const siteDrives = (await drivesRes.json()).value || [];
 
-                let fileId = null, driveId = null;
+                // ── Step 1: baseline from Electricity Report col H ──────
+                setHomeStatus('⏳ Loading previous readings from Electricity Report…');
+                let elecFileId = null, elecDriveId = null;
+                for (const drive of siteDrives) {
+                    const searchRes = await fetch(`https://graph.microsoft.com/v1.0/drives/${drive.id}/root/search(q='Electricity Report')`, { headers });
+                    if (!searchRes.ok) continue;
+                    const found = ((await searchRes.json()).value || []).find(f => f.name === ELEC_RPT_FILE);
+                    if (found) { elecFileId = found.id; elecDriveId = drive.id; break; }
+                }
+
+                let baselineCount = 0;
+                if (elecFileId) {
+                    const elecBase = `https://graph.microsoft.com/v1.0/drives/${elecDriveId}/items/${elecFileId}`;
+                    const elecSessionRes = await fetch(`${elecBase}/workbook/createSession`, {
+                        method: 'POST', headers, body: JSON.stringify({ persistChanges: false })
+                    });
+                    if (elecSessionRes.ok) {
+                        const elecSessionHeaders = { ...headers, 'workbook-session-id': (await elecSessionRes.json()).id };
+                        const elecRange = await fetch(
+                            `${elecBase}/workbook/worksheets('Sheet1')/range(address='B2:H115')`,
+                            { headers: elecSessionHeaders }
+                        );
+                        await fetch(`${elecBase}/workbook/closeSession`, { method: 'POST', headers: elecSessionHeaders });
+
+                        if (elecRange.ok) {
+                            const elecRows = (await elecRange.json()).values || [];
+                            const baseline = {};
+                            for (const row of elecRows) {
+                                const slip    = (row[0] || '').toString().trim();
+                                const reading = row[6]; // col H — most recent billing cycle
+                                if (slip && reading !== '' && reading !== null) baseline[slip] = reading;
+                            }
+                            saveBaseline(baseline);
+                            baselineCount = Object.keys(baseline).length;
+                        }
+                    }
+                }
+
+                // ── Step 2: current-cycle readings from meter file ───────
+                setHomeStatus('⏳ Loading current cycle readings…');
+                let meterFileId = null, meterDriveId = null;
                 for (const drive of siteDrives) {
                     const searchRes = await fetch(`https://graph.microsoft.com/v1.0/drives/${drive.id}/root/search(q='CYC Dock Meter Reading')`, { headers });
                     if (!searchRes.ok) continue;
                     const found = ((await searchRes.json()).value || []).find(f => f.name === EXCEL_FILE);
-                    if (found) { fileId = found.id; driveId = drive.id; break; }
+                    if (found) { meterFileId = found.id; meterDriveId = drive.id; break; }
                 }
-                if (!fileId) throw new Error(`"${EXCEL_FILE}" not found in SharePoint`);
 
-                const baseUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}`;
-                const sessionRes = await fetch(`${baseUrl}/workbook/createSession`, {
-                    method: 'POST', headers, body: JSON.stringify({ persistChanges: false })
-                });
-                if (!sessionRes.ok) throw new Error('Could not open workbook session');
-                const sessionHeaders = { ...headers, 'workbook-session-id': (await sessionRes.json()).id };
+                let loadedCount = 0;
+                if (meterFileId) {
+                    const baseUrl = `https://graph.microsoft.com/v1.0/drives/${meterDriveId}/items/${meterFileId}`;
+                    const sessionRes = await fetch(`${baseUrl}/workbook/createSession`, {
+                        method: 'POST', headers, body: JSON.stringify({ persistChanges: false })
+                    });
+                    if (sessionRes.ok) {
+                        const sessionHeaders = { ...headers, 'workbook-session-id': (await sessionRes.json()).id };
+                        const wsData = await (await fetch(`${baseUrl}/workbook/worksheets`, { headers: sessionHeaders })).json();
+                        const sheetName = wsData.value[0].name;
+                        const rangeRes = await fetch(
+                            `${baseUrl}/workbook/worksheets('${sheetName}')/range(address='A1:H122')`,
+                            { headers: sessionHeaders }
+                        );
+                        await fetch(`${baseUrl}/workbook/closeSession`, { method: 'POST', headers: sessionHeaders });
 
-                const wsData = await (await fetch(`${baseUrl}/workbook/worksheets`, { headers: sessionHeaders })).json();
-                const sheetName = wsData.value[0].name;
-                const rangeRes = await fetch(
-                    `${baseUrl}/workbook/worksheets('${sheetName}')/range(address='A1:H122')`,
-                    { headers: sessionHeaders }
-                );
-                await fetch(`${baseUrl}/workbook/closeSession`, { method: 'POST', headers: sessionHeaders });
-
-                if (!rangeRes.ok) throw new Error('Could not read sheet data');
-                const rows = (await rangeRes.json()).values || [];
-
-                const baseline = {};
-                for (let i = 1; i < rows.length; i++) {
-                    const [slip, , curr] = rows[i];
-                    if (slip && curr !== '' && curr !== null) baseline[slip] = curr;
+                        if (rangeRes.ok) {
+                            const rows = (await rangeRes.json()).values || [];
+                            const entries = [];
+                            for (let i = 1; i < rows.length; i++) {
+                                const [slip, prev, curr, usage, date, time, notes, initials] = rows[i];
+                                const slipStr = (slip || '').toString().trim();
+                                const currStr = (curr !== null && curr !== undefined && curr !== '') ? curr.toString().trim() : '';
+                                if (slipStr && currStr) {
+                                    entries.push({
+                                        meterId:     slipStr,
+                                        prevReading: (prev     || '').toString().trim(),
+                                        reading:     currStr,
+                                        usage:       (usage    || '').toString().trim(),
+                                        notes:       (notes    || '').toString().trim(),
+                                        initials:    (initials || '').toString().trim(),
+                                        date:        (date     || '').toString().trim(),
+                                        time:        (time     || '').toString().trim()
+                                    });
+                                }
+                            }
+                            if (entries.length > 0) {
+                                saveReadings(entries);
+                                loadedCount = entries.length;
+                            }
+                        }
+                    }
                 }
-                if (Object.keys(baseline).length > 0) {
-                    saveBaseline(baseline);
-                    autoFillPrev();
-                    showToast(`📋 Loaded ${Object.keys(baseline).length} previous readings`);
-                } else {
-                    showToast('⚠️ No previous readings found in spreadsheet', true);
-                }
+
+                autoFillPrev();
+                renderCount();
+                const msg = loadedCount > 0
+                    ? `📋 Resumed — ${loadedCount} readings in progress`
+                    : `📋 Ready — ${baselineCount} previous readings loaded`;
+                showToast(msg);
             } catch (e) {
                 console.warn('Baseline load failed:', e.message);
                 showToast('❌ Could not load data: ' + e.message, true);
@@ -1329,9 +1390,9 @@
 
                 await fetch(`${baseUrl}/workbook/closeSession`, { method: 'POST', headers: sessionHeaders });
 
-                const newBaseline = {};
-                rows.slice(1).forEach(([slip, , curr]) => { if (slip && curr !== '') newBaseline[slip] = curr; });
-                saveBaseline(newBaseline);
+                // Baseline is intentionally NOT updated here — it is locked to the
+                // Electricity Report values for the entire billing cycle.
+                // Only Start New Month / Resume reload the baseline from Electricity Report.
 
                 if (silent) {
                     console.log(`[auto-sync] ${rows.length - 1} slips written to SharePoint`);

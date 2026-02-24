@@ -72,7 +72,17 @@ METER READING RULES
 
 CURRENT VERSION
 ---------------
-Ver 1.4.5 — 2/23/2026
+Ver 1.4.6 — 2/23/2026
+
+CHANGES IN 1.4.6
+----------------
+- Resume / Reread now loads the baseline (Previous Readings) from
+  Electricity Report col H — same locked source as Start New Month
+- Resume also loads current-cycle readings from CYC Dock Meter Reading.xlsx
+  into localStorage so the user can continue where they left off
+- syncToOneDrive no longer overwrites the baseline — previous readings
+  are now locked for the entire billing cycle and only refresh on
+  Start New Month or Resume
 
 CHANGES IN 1.4.5
 ----------------
