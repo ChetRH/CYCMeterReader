@@ -322,7 +322,7 @@
             IT Chair only (uncheck to email all office staff)
         </label>
 
-        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.5.1 &nbsp;2/23/2026</div>
+        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.5.2 &nbsp;2/23/2026</div>
     </div>
 
     <!-- ══ METER READING UI ════════════════════════════════════════ -->
@@ -461,11 +461,13 @@
         }
 
         function setDock(dock) {
+            const prevDock = currentDockFromIndex();
             const idx = walkOrder.findIndex(s => s[0] === dock);
             if (idx >= 0) walkIndex = idx;
             updateSlipDisplay();
             autoFillPrev();
             document.getElementById('meterReading').focus();
+            if (dock !== prevDock) runAutoSync(); // sync when jumping to a different dock
         }
 
         function advanceSlip() {
@@ -473,9 +475,13 @@
                 const prevDock = currentDockFromIndex();
                 walkIndex++;
                 const newDock = currentDockFromIndex();
-                if (newDock !== prevDock) showToast(`📍 Now on Dock ${newDock}`);
+                if (newDock !== prevDock) {
+                    showToast(`📍 Now on Dock ${newDock}`);
+                    runAutoSync(); // sync at every dock transition
+                }
             } else {
                 showToast('🎉 All slips completed!');
+                runAutoSync(); // sync when all slips are done
                 return;
             }
             updateSlipDisplay();
