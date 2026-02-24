@@ -267,9 +267,16 @@
         <p style="color:#888; font-size:0.85rem; margin-bottom:24px;">Docks A · B · C — Odd side out, Even side back</p>
 
         <!-- Login bar -->
-        <div class="ms-login-bar" style="margin-bottom:24px;">
+        <div class="ms-login-bar" style="margin-bottom:12px;">
             <div id="homeUserLabel">Not signed in to Microsoft</div>
             <button class="btn-mslogin" id="homeLoginBtn" onclick="toggleLogin()">Sign In</button>
+        </div>
+
+        <!-- Initials -->
+        <div class="ms-login-bar" style="margin-bottom:24px;">
+            <div style="color:#aaa; font-size:0.9rem;">Your initials <span style="color:#555;font-size:0.8rem;">(saved with each reading)</span></div>
+            <input type="text" id="initialsInput" maxlength="4" placeholder="e.g. CRH"
+                style="width:76px; padding:8px 10px; font-size:1.1rem; font-weight:bold; background:#0f3460; border:2px solid #1a4a80; border-radius:8px; color:#4fc3f7; text-align:center; text-transform:uppercase; letter-spacing:3px; outline:none;">
         </div>
 
         <!-- Action buttons -->
@@ -314,7 +321,7 @@
             IT Chair only (uncheck to email all office staff)
         </label>
 
-        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.4.3 &nbsp;2/23/2026</div>
+        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.4.4 &nbsp;2/23/2026</div>
     </div>
 
     <!-- ══ METER READING UI ════════════════════════════════════════ -->
@@ -388,7 +395,11 @@
 <script>
         const STORAGE_KEY  = 'meter_readings';
         const BASELINE_KEY = 'meter_baseline';
+        const INITIALS_KEY = 'meter_initials';
         const DOCKS = ['A', 'B', 'C'];
+
+        function getInitials() { return (localStorage.getItem(INITIALS_KEY) || '').toUpperCase(); }
+        function saveInitials(v) { localStorage.setItem(INITIALS_KEY, v.toUpperCase()); }
 
         const DOCK_WALK = {
             A: [
@@ -582,6 +593,7 @@
                 reading: curr,
                 usage: usage,
                 notes: notes,
+                initials: getInitials(),
                 date: now.toLocaleDateString(),
                 time: now.toLocaleTimeString()
             };
@@ -643,6 +655,14 @@
         updateSlipDisplay();
         autoFillPrev();
         renderCount();
+
+        // Initials input — persist to localStorage, auto-uppercase
+        const initialsEl = document.getElementById('initialsInput');
+        initialsEl.value = getInitials();
+        initialsEl.addEventListener('input', function () {
+            this.value = this.value.toUpperCase();
+            saveInitials(this.value);
+        });
 
         // ── Microsoft / SharePoint ────────────────────────────────
         const SP_HOSTNAME   = 'capitalyachtclubcom.sharepoint.com';
@@ -812,7 +832,7 @@
                 const wsData = await (await fetch(`${baseUrl}/workbook/worksheets`, { headers: sessionHeaders })).json();
                 const sheetName = wsData.value[0].name;
                 const rangeRes = await fetch(
-                    `${baseUrl}/workbook/worksheets('${sheetName}')/range(address='A1:G122')`,
+                    `${baseUrl}/workbook/worksheets('${sheetName}')/range(address='A1:H122')`,
                     { headers: sessionHeaders }
                 );
                 await fetch(`${baseUrl}/workbook/closeSession`, { method: 'POST', headers: sessionHeaders });
@@ -1067,7 +1087,7 @@
                 const sheetBase = `${baseUrl}/workbook/worksheets('${encodeURIComponent(sheetName)}')`;
 
                 setHomeStatus('⏳ Reading current data…');
-                const readRes = await fetch(`${sheetBase}/range(address='A1:G122')`, { headers: sessionHeaders });
+                const readRes = await fetch(`${sheetBase}/range(address='A1:H122')`, { headers: sessionHeaders });
                 if (!readRes.ok) throw new Error('Could not read main sheet');
 
                 // Archive file
@@ -1140,12 +1160,12 @@
                 }
 
                 setHomeStatus('⏳ Clearing main sheet…');
-                await fetch(`${sheetBase}/range(address='A1:G122')/clear`,
+                await fetch(`${sheetBase}/range(address='A1:H122')/clear`,
                     { method: 'POST', headers: sessionHeaders, body: JSON.stringify({ applyTo: 'contents' }) }
                 );
-                await fetch(`${sheetBase}/range(address='A1:G1')`, {
+                await fetch(`${sheetBase}/range(address='A1:H1')`, {
                     method: 'PATCH', headers: sessionHeaders,
-                    body: JSON.stringify({ values: [['Slip', 'Previous Reading', 'Current Reading', 'Usage', 'Date', 'Time', 'Notes']] })
+                    body: JSON.stringify({ values: [['Slip', 'Previous Reading', 'Current Reading', 'Usage', 'Date', 'Time', 'Notes', 'Reader']] })
                 });
 
                 await fetch(`${baseUrl}/workbook/closeSession`, { method: 'POST', headers: sessionHeaders });
@@ -1255,14 +1275,14 @@
                 const sheetName = wsData.value[0].name;
                 const sheetBase = `${baseUrl}/workbook/worksheets('${sheetName}')`;
 
-                const existingRes  = await fetch(`${sheetBase}/range(address='A1:G122')`, { headers: sessionHeaders });
+                const existingRes  = await fetch(`${sheetBase}/range(address='A1:H122')`, { headers: sessionHeaders });
                 const existingRows = existingRes.ok ? ((await existingRes.json()).values || []) : [];
 
                 const excelMap = {};
                 for (let i = 1; i < existingRows.length; i++) {
-                    const [slip, prev, curr, usage, date, time, notes] = existingRows[i];
+                    const [slip, prev, curr, usage, date, time, notes, initials] = existingRows[i];
                     const key = String(slip || '').trim();
-                    if (key) excelMap[key] = { prev, curr, usage, date, time, notes };
+                    if (key) excelMap[key] = { prev, curr, usage, date, time, notes, initials };
                 }
 
                 const newMap = {};
@@ -1273,7 +1293,7 @@
                 canonicalSlips.sort();
 
                 const rows = [
-                    ['Slip', 'Previous Reading', 'Current Reading', 'Usage', 'Date', 'Time', 'Notes'],
+                    ['Slip', 'Previous Reading', 'Current Reading', 'Usage', 'Date', 'Time', 'Notes', 'Reader'],
                     ...canonicalSlips.map(slip => {
                         if (newMap[slip]) {
                             const r = newMap[slip];
@@ -1282,22 +1302,22 @@
                                 ? exCurr : (r.prevReading || '');
                             const usage = (prev !== '' && !isNaN(prev) && !isNaN(r.reading))
                                 ? (parseFloat(r.reading) - parseFloat(prev)).toFixed(0) : '';
-                            return [slip, prev, r.reading, usage, r.date, r.time, r.notes || ''];
+                            return [slip, prev, r.reading, usage, r.date, r.time, r.notes || '', r.initials || ''];
                         } else if (excelMap[slip]) {
                             const e = excelMap[slip];
-                            return [slip, e.prev ?? '', e.curr ?? '', e.usage ?? '', e.date ?? '', e.time ?? '', e.notes ?? ''];
+                            return [slip, e.prev ?? '', e.curr ?? '', e.usage ?? '', e.date ?? '', e.time ?? '', e.notes ?? '', e.initials ?? ''];
                         } else {
-                            return [slip, '', '', '', '', '', ''];
+                            return [slip, '', '', '', '', '', '', ''];
                         }
                     })
                 ];
 
                 if (!silent) setHomeStatus('⏳ Writing to Excel…');
-                await fetch(`${sheetBase}/range(address='A1:G122')/clear`,
+                await fetch(`${sheetBase}/range(address='A1:H122')/clear`,
                     { method: 'POST', headers: sessionHeaders, body: JSON.stringify({ applyTo: 'contents' }) }
                 );
 
-                const writeRange = `A1:G${rows.length}`;
+                const writeRange = `A1:H${rows.length}`;
                 const updateRes = await fetch(
                     `${sheetBase}/range(address='${writeRange}')`,
                     { method: 'PATCH', headers: sessionHeaders, body: JSON.stringify({ values: rows }) }

@@ -72,7 +72,14 @@ METER READING RULES
 
 CURRENT VERSION
 ---------------
-Ver 1.4.3 — 2/23/2026
+Ver 1.4.4 — 2/23/2026
+
+CHANGES IN 1.4.4
+----------------
+- Initials field on home screen: user enters their initials (up to 4 chars, auto-uppercase)
+  saved to localStorage and attached to every reading entry
+- Spreadsheet gains a "Reader" column H with the initials of who recorded each reading
+- All sheet ranges updated from A:G to A:H throughout (sync, reset, load baseline)
 
 CHANGES IN 1.4.3
 ----------------
