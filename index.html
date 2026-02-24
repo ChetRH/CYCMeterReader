@@ -314,7 +314,7 @@
             IT Chair only (uncheck to email all office staff)
         </label>
 
-        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.4.2 &nbsp;2/23/2026</div>
+        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.4.3 &nbsp;2/23/2026</div>
     </div>
 
     <!-- ══ METER READING UI ════════════════════════════════════════ -->
@@ -559,12 +559,15 @@
                 return;
             }
 
-            const curr = trimReading(currRaw);
+            const curr = trimReading(currRaw);                         // 5-digit trimmed, for storage & usage
             const prevDisplay = document.getElementById('prevReading').value.trim();
-            const prev = prevDisplay.length > 0 ? prevDisplay.slice(0, -1) : '';
+            const prev = prevDisplay.length > 0 ? prevDisplay.slice(0, -1) : ''; // 5-digit trimmed, for usage
 
-            if (prev !== '' && !isNaN(prev) && !isNaN(curr) && parseFloat(curr) < parseFloat(prev)) {
-                if (!confirm(`⚠️ Current reading (${curr}) is LESS than previous (${prev}).\n\nIs this correct?`)) {
+            // Compare in 6-digit display space (trailing zero on both sides) so scales always match
+            const currFull = parseFloat(currRaw);                      // e.g. "045100" → 45100
+            const prevFull = parseFloat(prevDisplay);                  // e.g. "045100" → 45100
+            if (prevDisplay && !isNaN(currFull) && !isNaN(prevFull) && currFull < prevFull) {
+                if (!confirm(`⚠️ Current reading (${currRaw}) is LESS than previous (${prevDisplay}).\n\nIs this correct?`)) {
                     document.getElementById('meterReading').focus();
                     return;
                 }

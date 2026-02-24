@@ -72,7 +72,12 @@ METER READING RULES
 
 CURRENT VERSION
 ---------------
-Ver 1.4.2 — 2/23/2026
+Ver 1.4.3 — 2/23/2026
+
+CHANGES IN 1.4.3
+----------------
+- Low-reading comparison now uses full 6-digit display values (trailing zero on both sides)
+  instead of stripping the trailing zero before comparing, ensuring scale always matches
 
 CHANGES IN 1.4.2
 ----------------
