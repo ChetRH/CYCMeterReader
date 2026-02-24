@@ -322,7 +322,7 @@
             IT Chair only (uncheck to email all office staff)
         </label>
 
-        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.4.6 &nbsp;2/23/2026</div>
+        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.4.7 &nbsp;2/23/2026</div>
     </div>
 
     <!-- ══ METER READING UI ════════════════════════════════════════ -->
@@ -335,8 +335,9 @@
     <!-- Entry Card -->
     <div class="card">
         <!-- Home button row -->
-        <div style="display:flex; justify-content:flex-end; margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
             <button class="btn-home" onclick="showHomeScreen()">🏠 Home</button>
+            <button class="btn-home" onclick="quickSendEmail()" style="background:#01579b; border-color:#0288d1;">📧 Send to Office</button>
         </div>
         <div class="form-group">
             <label>Current Slip</label>
@@ -1430,6 +1431,15 @@
                 autoSyncTimer = null;
                 console.log('[auto-sync] stopped');
             }
+        }
+
+        // ── Quick send from reading screen ────────────────────────
+        async function quickSendEmail() {
+            if (!msalAccount) {
+                showToast('⚠️ Sign in first — tap Home → Sign In', true);
+                return;
+            }
+            await sendNotificationEmail();
         }
 
         // ── Voice input ───────────────────────────────────────────

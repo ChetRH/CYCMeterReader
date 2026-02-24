@@ -72,7 +72,13 @@ METER READING RULES
 
 CURRENT VERSION
 ---------------
-Ver 1.4.6 — 2/23/2026
+Ver 1.4.7 — 2/23/2026
+
+CHANGES IN 1.4.7
+----------------
+- "📧 Send to Office" button added to the meter reading screen (top-right,
+  next to the Home button) — sends the same notification email without
+  needing to return to the Home screen
 
 CHANGES IN 1.4.6
 ----------------
