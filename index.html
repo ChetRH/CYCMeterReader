@@ -322,7 +322,7 @@
             IT Chair only (uncheck to email all office staff)
         </label>
 
-        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.5.0 &nbsp;2/23/2026</div>
+        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.5.1 &nbsp;2/23/2026</div>
     </div>
 
     <!-- ══ METER READING UI ════════════════════════════════════════ -->
@@ -1446,6 +1446,26 @@
                 console.log('[auto-sync] stopped');
             }
         }
+
+        // ── Idle sync & visibility sync ───────────────────────────
+        // Sync when idle for 3 minutes, or when app is backgrounded/closed
+        const IDLE_SYNC_MS = 3 * 60 * 1000;
+        let idleTimer = null;
+
+        function resetIdleTimer() {
+            if (idleTimer) clearTimeout(idleTimer);
+            idleTimer = setTimeout(runAutoSync, IDLE_SYNC_MS);
+        }
+
+        ['touchstart', 'mousedown', 'keydown', 'scroll'].forEach(evt => {
+            document.addEventListener(evt, resetIdleTimer, { passive: true });
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') runAutoSync();
+        });
+
+        resetIdleTimer(); // start countdown immediately on page load
 
         // ── Quick send from reading screen ────────────────────────
         async function quickSendEmail() {
