@@ -852,9 +852,25 @@
                 const emailList = itOnly ? ['ITChair@capitalyachtclub.com'] : NOTIFY_EMAILS;
                 const toRecipients = emailList.map(address => ({ emailAddress: { address } }));
 
-                const APP_URL      = 'https://chetRH.github.io/CYCMeterReader/';
-                const SP_URL       = 'https://capitalyachtclubcom.sharepoint.com/sites/DockOperations';
-                const BURGEE_URL   = 'https://chetRH.github.io/CYCMeterReader/CYC%20Burgee.png';
+                const APP_URL    = 'https://chetRH.github.io/CYCMeterReader/';
+                const BURGEE_URL = 'https://chetRH.github.io/CYCMeterReader/CYC%20Burgee.png';
+
+                // Resolve the direct webUrl for the meter reading spreadsheet
+                let spreadsheetUrl = 'https://capitalyachtclubcom.sharepoint.com/sites/DockOperations';
+                try {
+                    const siteRes = await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_HOSTNAME}:${SP_SITE_PATH}`, { headers });
+                    if (siteRes.ok) {
+                        const siteId = (await siteRes.json()).id;
+                        const drivesRes = await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/drives`, { headers });
+                        const siteDrives = (await drivesRes.json()).value || [];
+                        for (const drive of siteDrives) {
+                            const searchRes = await fetch(`https://graph.microsoft.com/v1.0/drives/${drive.id}/root/search(q='CYC Dock Meter Reading')`, { headers });
+                            if (!searchRes.ok) continue;
+                            const found = ((await searchRes.json()).value || []).find(f => f.name === EXCEL_FILE);
+                            if (found?.webUrl) { spreadsheetUrl = found.webUrl; break; }
+                        }
+                    }
+                } catch (e) { console.warn('Could not resolve spreadsheet URL:', e); }
 
                 const htmlContent = `
 <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;background:#f4f6f9;padding:24px;border-radius:10px;">
@@ -874,7 +890,7 @@
     </table>
   </div>
   <div style="margin-top:20px;display:flex;gap:12px;justify-content:center;">
-    <a href="${SP_URL}" style="display:inline-block;padding:11px 22px;background:#0078d4;color:#fff;text-decoration:none;border-radius:7px;font-weight:bold;font-size:0.9rem;">📊 View Spreadsheet</a>
+    <a href="${spreadsheetUrl}" style="display:inline-block;padding:11px 22px;background:#0078d4;color:#fff;text-decoration:none;border-radius:7px;font-weight:bold;font-size:0.9rem;">📊 View Spreadsheet</a>
     <a href="${APP_URL}" style="display:inline-block;padding:11px 22px;background:#003366;color:#fff;text-decoration:none;border-radius:7px;font-weight:bold;font-size:0.9rem;">📱 Open App</a>
   </div>
   <p style="margin-top:20px;font-size:0.78rem;color:#aaa;text-align:center;">
