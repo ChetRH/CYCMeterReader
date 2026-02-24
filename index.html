@@ -322,7 +322,7 @@
             IT Chair only (uncheck to email all office staff)
         </label>
 
-        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.4.9 &nbsp;2/23/2026</div>
+        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.5.0 &nbsp;2/23/2026</div>
     </div>
 
     <!-- ══ METER READING UI ════════════════════════════════════════ -->
@@ -659,9 +659,9 @@
         autoFillPrev();
         renderCount();
 
-        // Initials input — persist to localStorage, auto-uppercase
+        // Initials input — starts empty each session; saves to localStorage on input
         const initialsEl = document.getElementById('initialsInput');
-        initialsEl.value = getInitials();
+        initialsEl.value = ''; // always start blank — user must enter initials each session
         initialsEl.addEventListener('input', function () {
             saveInitials(this.value); // CSS text-transform:uppercase handles display; saveInitials() uppercases before storing
         });
@@ -764,6 +764,19 @@
         }
 
         async function homeAction(action) {
+            // Require initials before anything else
+            if (!initialsEl.value.trim()) {
+                initialsEl.style.borderColor = '#ef5350';
+                initialsEl.style.boxShadow   = '0 0 0 3px rgba(239,83,80,0.35)';
+                initialsEl.focus();
+                showToast('⚠️ Please enter your initials first', true);
+                setTimeout(() => {
+                    initialsEl.style.borderColor = '#4fc3f7';
+                    initialsEl.style.boxShadow   = '';
+                }, 2500);
+                return;
+            }
+
             // Require login for all actions
             if (!msalAccount) {
                 await toggleLogin();
