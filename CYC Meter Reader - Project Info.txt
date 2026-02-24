@@ -72,7 +72,13 @@ METER READING RULES
 
 CURRENT VERSION
 ---------------
-Ver 1.4 — 2/23/2026
+Ver 1.4.1 — 2/23/2026
+
+CHANGES IN 1.4.1
+----------------
+- IT Chair only checkbox (checked by default) — uncheck to email all office staff
+- Email now HTML with CYC Burgee, spreadsheet link (resolved via Graph API), and app link
+- Spreadsheet link opens directly in Excel Online via SharePoint webUrl
 
 CHANGES IN 1.4
 --------------
