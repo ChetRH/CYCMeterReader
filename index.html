@@ -314,7 +314,7 @@
             IT Chair only (uncheck to email all office staff)
         </label>
 
-        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.4.1 &nbsp;2/23/2026</div>
+        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; pointer-events:none;">Ver 1.4.2 &nbsp;2/23/2026</div>
     </div>
 
     <!-- ══ METER READING UI ════════════════════════════════════════ -->
@@ -429,14 +429,8 @@
         }
 
         function saveAndNavigate(moveFn) {
-            const curr = document.getElementById('meterReading').value.trim();
-            if (curr) saveReading(true, moveFn);
-            else {
-                document.getElementById('slipNotes').value = '';
-                document.getElementById('meterReading').value = '';
-                document.getElementById('usageDisplay').style.display = 'none';
-                moveFn();
-            }
+            // Always go through saveReading — it handles the no-data case gracefully
+            saveReading(true, moveFn);
         }
 
         function prevSlip() {
@@ -557,7 +551,13 @@
         // ── Save reading ──────────────────────────────────────────
         function saveReading(skipAutoAdvance = false, navFn = null) {
             const currRaw = meterBuffer;
-            if (currRaw === '000000') { showToast('⚠️ Please enter a reading', true); document.getElementById('meterReading').focus(); return; }
+            if (currRaw === '000000') {
+                // No data entered — just move on without saving
+                document.getElementById('slipNotes').value = '';
+                document.getElementById('usageDisplay').style.display = 'none';
+                if (navFn) navFn(); else advanceSlip();
+                return;
+            }
 
             const curr = trimReading(currRaw);
             const prevDisplay = document.getElementById('prevReading').value.trim();

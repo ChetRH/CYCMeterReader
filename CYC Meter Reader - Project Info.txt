@@ -72,7 +72,13 @@ METER READING RULES
 
 CURRENT VERSION
 ---------------
-Ver 1.4.1 — 2/23/2026
+Ver 1.4.2 — 2/23/2026
+
+CHANGES IN 1.4.2
+----------------
+- Skip slips with no data entered: Save & Next and arrow navigation now advance
+  silently when no reading has been typed (000000), instead of blocking with an error
+- Validation rules (low reading warning, etc.) still apply when data has been entered
 
 CHANGES IN 1.4.1
 ----------------
