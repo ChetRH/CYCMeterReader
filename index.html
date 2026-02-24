@@ -360,12 +360,16 @@
         </div>
         <div class="form-group">
             <label>Current Reading</label>
-            <div style="display:flex; gap:8px; align-items:center;">
-                <input type="text" id="meterReading" value="000000" inputmode="numeric" autocomplete="off" autofocus
-                    style="flex:1; letter-spacing:4px; font-variant-numeric:tabular-nums;"
+            <div style="display:flex; gap:8px; align-items:center;" onclick="focusMeterInput()">
+                <input type="text" id="meterReading" value="000000" autocomplete="off"
+                    style="flex:1; letter-spacing:4px; font-variant-numeric:tabular-nums; cursor:pointer;"
                     readonly>
-                <button class="btn-mic" id="micBtn" onclick="toggleVoice()" title="Speak the meter reading">🎤</button>
+                <button class="btn-mic" id="micBtn" onclick="toggleVoice(); event.stopPropagation();" title="Speak the meter reading">🎤</button>
             </div>
+            <!-- Hidden ghost input: gives mobile keyboard a real editable target -->
+            <input id="meterGhost" type="text" inputmode="numeric" pattern="[0-9]*"
+                autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+                style="position:fixed; top:0; left:0; width:1px; height:1px; opacity:0; pointer-events:none; border:none; padding:0;">
         </div>
         <div class="form-group" id="usageDisplay" style="display:none;">
             <label>Usage</label>
@@ -447,14 +451,14 @@
             if (walkIndex > 0) walkIndex--;
             updateSlipDisplay();
             autoFillPrev();
-            document.getElementById('meterReading').focus();
+            focusMeterInput();
         }
 
         function nextSlip() {
             if (walkIndex < walkOrder.length - 1) walkIndex++;
             updateSlipDisplay();
             autoFillPrev();
-            document.getElementById('meterReading').focus();
+            focusMeterInput();
         }
 
         function setDock(dock) {
@@ -463,7 +467,7 @@
             if (idx >= 0) walkIndex = idx;
             updateSlipDisplay();
             autoFillPrev();
-            document.getElementById('meterReading').focus();
+            focusMeterInput();
             if (dock !== prevDock) runAutoSync(); // sync when jumping to a different dock
         }
 
@@ -585,7 +589,7 @@
             const prevFull = parseFloat(prevDisplay);                  // e.g. "045100" → 45100
             if (prevDisplay && !isNaN(currFull) && !isNaN(prevFull) && currFull < prevFull) {
                 if (!confirm(`⚠️ Current reading (${currRaw}) is LESS than previous (${prevDisplay}).\n\nIs this correct?`)) {
-                    document.getElementById('meterReading').focus();
+                    focusMeterInput();
                     return;
                 }
             }
@@ -614,7 +618,7 @@
             document.getElementById('usageDisplay').style.display = 'none';
             if (navFn) navFn();
             else advanceSlip();
-            document.getElementById('meterReading').focus();
+            focusMeterInput();
         }
 
         function renderCount() {
@@ -634,19 +638,53 @@
             setMeterBuffer('000000');
         }
 
-        document.getElementById('meterReading').addEventListener('keydown', e => {
-            if (e.key >= '0' && e.key <= '9') {
-                e.preventDefault();
-                const next = (meterBuffer + e.key).slice(-6);
-                setMeterBuffer(next);
-            } else if (e.key === 'Backspace') {
-                e.preventDefault();
-                const next = '0' + meterBuffer.slice(0, -1);
-                setMeterBuffer(next);
-            } else if (e.key === 'Enter') {
-                e.preventDefault();
+        // focusMeterInput: focuses the hidden ghost input so the mobile number
+        // keyboard pops up, while the visible meterReading field stays readonly.
+        function focusMeterInput() {
+            document.getElementById('meterGhost').focus();
+        }
+
+        const meterGhost = document.getElementById('meterGhost');
+
+        function _handleMeterKey(key) {
+            if (key >= '0' && key <= '9') {
+                setMeterBuffer((meterBuffer + key).slice(-6));
+                return true;
+            } else if (key === 'Backspace') {
+                setMeterBuffer('0' + meterBuffer.slice(0, -1));
+                return true;
+            } else if (key === 'Enter') {
                 saveReading();
+                return true;
             }
+            return false;
+        }
+
+        // Desktop / iOS: keydown fires with a real e.key value
+        meterGhost.addEventListener('keydown', e => {
+            if (_handleMeterKey(e.key)) e.preventDefault();
+            meterGhost.value = '';
+        });
+
+        // Android / mobile: keydown gives "Unidentified", so use the input event instead
+        meterGhost.addEventListener('input', () => {
+            const digits = meterGhost.value.replace(/\D/g, '');
+            for (const ch of digits) _handleMeterKey(ch);
+            meterGhost.value = '';
+        });
+
+        // Show focus ring on the visible field while ghost is active
+        meterGhost.addEventListener('focus', () => {
+            document.getElementById('meterReading').style.outline = '2px solid #4fc3f7';
+        });
+        meterGhost.addEventListener('blur', () => {
+            document.getElementById('meterReading').style.outline = '';
+        });
+
+        // Keep keydown on the visible field too — handles physical keyboards
+        // on devices where the user tabs into / focuses meterReading directly.
+        document.getElementById('meterReading').addEventListener('keydown', e => {
+            if (_handleMeterKey(e.key)) e.preventDefault();
         });
 
         document.addEventListener('keydown', e => {
