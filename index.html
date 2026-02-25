@@ -319,7 +319,7 @@
 
         <input type="checkbox" id="chkITOnly" checked style="display:none;">
 
-        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; cursor:pointer; user-select:none;" onclick="toggleITOnly()">Ver 1.5.6 &nbsp;2/24/2026</div>
+        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; cursor:pointer; user-select:none;" onclick="toggleITOnly()">Ver 1.5.7 &nbsp;2/24/2026</div>
     </div>
 
     <!-- ══ METER READING UI ════════════════════════════════════════ -->
@@ -1527,11 +1527,15 @@
         let voiceRecognition = null;
         let voiceListening   = false;
         let voiceGotResult   = false;
+        let voiceIosRestarts = 0;
 
-        // iOS (Safari / Chrome-on-iOS via WKWebView) re-prompts for mic permission
-        // on every rec.start() call, so we must never auto-restart there.
+        // iOS (Safari / Chrome-on-iOS via WKWebView) ignores continuous=true and
+        // fires onend after ~1-2 s, showing the mic-permission banner on each start().
+        // We allow a limited number of auto-restarts so the button stays active long
+        // enough to speak (~8-10 s total), without the original infinite-loop spam.
         const isIOS = /iP(ad|hone|od)/i.test(navigator.userAgent) ||
                       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const IOS_MAX_RESTARTS = 4;   // ~6-10 s of listen time before giving up
 
         (function initVoice() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1580,17 +1584,30 @@
             };
 
             rec.onend = () => {
-                // On iOS every rec.start() triggers a new permission prompt, so
-                // never auto-restart — just stop and let the user tap mic again.
-                if (voiceListening && !voiceGotResult && !isIOS) {
-                    try { rec.start(); } catch(e) { stopVoice(); }
-                } else {
+                if (!voiceListening || voiceGotResult) {
+                    // Stopped intentionally or result already captured — clean up UI.
                     voiceListening = false;
                     const micBtn = document.getElementById('micBtn');
                     micBtn.classList.remove('listening');
                     micBtn.textContent = '🎤';
-                    if (isIOS && !voiceGotResult)
-                        showToast('🎤 No reading heard — tap mic to try again', false);
+                    return;
+                }
+                if (!isIOS) {
+                    // Android / desktop: continuous mode works; restart freely.
+                    try { rec.start(); } catch(e) { stopVoice(); }
+                } else if (voiceIosRestarts < IOS_MAX_RESTARTS) {
+                    // iOS: restart a limited number of times so the button stays
+                    // active long enough to speak, but doesn't loop forever.
+                    voiceIosRestarts++;
+                    setTimeout(() => {
+                        if (voiceListening && !voiceGotResult) {
+                            try { rec.start(); } catch(e) { stopVoice(); }
+                        }
+                    }, 250);
+                } else {
+                    // iOS restart budget exhausted — give up gracefully.
+                    stopVoice();
+                    showToast('🎤 No reading heard — tap mic to try again', false);
                 }
             };
 
@@ -1605,6 +1622,7 @@
             micBtn.textContent = '⏹️';
             voiceListening = true;
             voiceGotResult = false;
+            voiceIosRestarts = 0;
             try { voiceRecognition.start(); } catch(e) { stopVoice(); }
         }
 
