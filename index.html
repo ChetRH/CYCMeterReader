@@ -319,7 +319,7 @@
 
         <input type="checkbox" id="chkITOnly" checked style="display:none;">
 
-        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; cursor:pointer; user-select:none;" onclick="toggleITOnly()">Ver 1.5.10 &nbsp;2/27/2026</div>
+        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; cursor:pointer; user-select:none;" onclick="toggleITOnly()">Ver 1.5.11 &nbsp;2/27/2026</div>
     </div>
 
     <!-- ══ METER READING UI ════════════════════════════════════════ -->
@@ -1534,6 +1534,8 @@
         let voiceRecognition = null;
         let voiceListening   = false;
         let voiceGotResult   = false;
+        let voiceStartTime   = null;
+        const IOS_MAX_LISTEN_MS = 60 * 1000; // allow iOS to restart for up to 60 s
 
         (function initVoice() {
             const micBtn = document.getElementById('micBtn');
@@ -1584,12 +1586,13 @@
 
             rec.onend = () => {
                 if (voiceListening && !voiceGotResult) {
-                    if (isIOS) {
-                        // iOS: every .start() call shows a permission banner — don't auto-restart.
-                        // Reset the button; user taps again to retry.
+                    const elapsed = voiceStartTime ? Date.now() - voiceStartTime : Infinity;
+                    if (isIOS && elapsed >= IOS_MAX_LISTEN_MS) {
+                        // iOS time limit reached — stop and let user tap again
                         stopVoice();
+                        showToast('🎤 Timed out — tap mic to retry', false);
                     } else {
-                        // Non-iOS: fresh instance required (cannot reuse after onend)
+                        // Restart: fresh instance required on iOS (cannot reuse after onend)
                         voiceRecognition = createRecognition();
                         try { voiceRecognition.start(); } catch(e) { stopVoice(); }
                     }
@@ -1612,6 +1615,7 @@
             micBtn.textContent = '⏹️';
             voiceListening = true;
             voiceGotResult = false;
+            voiceStartTime = Date.now();
             voiceRecognition = createRecognition();
             try { voiceRecognition.start(); } catch(e) { stopVoice(); }
         }
