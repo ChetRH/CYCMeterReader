@@ -319,7 +319,7 @@
 
         <input type="checkbox" id="chkITOnly" checked style="display:none;">
 
-        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; cursor:pointer; user-select:none;" onclick="toggleITOnly()">Ver 1.5.8 &nbsp;2/24/2026</div>
+        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; cursor:pointer; user-select:none;" onclick="toggleITOnly()">Ver 1.5.9 &nbsp;2/27/2026</div>
     </div>
 
     <!-- ══ METER READING UI ════════════════════════════════════════ -->
@@ -1524,20 +1524,24 @@
         }
 
         // ── Voice input ───────────────────────────────────────────
+        // iOS Safari fix: a SpeechRecognition instance cannot be restarted after
+        // onend fires — create a fresh instance each activation instead.
+        const SpeechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition;
         let voiceRecognition = null;
         let voiceListening   = false;
         let voiceGotResult   = false;
 
         (function initVoice() {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             const micBtn = document.getElementById('micBtn');
-            if (!SpeechRecognition) {
+            if (!SpeechRecognitionClass) {
                 micBtn.classList.add('unsupported');
                 micBtn.title = 'Voice input not supported on this browser';
                 micBtn.onclick = () => showToast('⚠️ Voice input not supported on this browser', true);
-                return;
             }
-            const rec = new SpeechRecognition();
+        })();
+
+        function createRecognition() {
+            const rec = new SpeechRecognitionClass();
             rec.lang = 'en-US';
             rec.interimResults = false;
             rec.maxAlternatives = 5;
@@ -1576,7 +1580,9 @@
 
             rec.onend = () => {
                 if (voiceListening && !voiceGotResult) {
-                    try { rec.start(); } catch(e) { stopVoice(); }
+                    // Fresh instance required on iOS Safari — cannot reuse after onend
+                    voiceRecognition = createRecognition();
+                    try { voiceRecognition.start(); } catch(e) { stopVoice(); }
                 } else {
                     voiceListening = false;
                     const micBtn = document.getElementById('micBtn');
@@ -1585,17 +1591,18 @@
                 }
             };
 
-            voiceRecognition = rec;
-        })();
+            return rec;
+        }
 
         function toggleVoice() {
             if (voiceListening) { stopVoice(); return; }
-            if (!voiceRecognition) return;
+            if (!SpeechRecognitionClass) return;
             const micBtn = document.getElementById('micBtn');
             micBtn.classList.add('listening');
             micBtn.textContent = '⏹️';
             voiceListening = true;
             voiceGotResult = false;
+            voiceRecognition = createRecognition();
             try { voiceRecognition.start(); } catch(e) { stopVoice(); }
         }
 
@@ -1606,6 +1613,7 @@
             micBtn.classList.remove('listening');
             micBtn.textContent = '🎤';
             try { voiceRecognition && voiceRecognition.stop(); } catch(e) {}
+            voiceRecognition = null;
         }
     </script>
 </body>
