@@ -319,7 +319,7 @@
 
         <input type="checkbox" id="chkITOnly" checked style="display:none;">
 
-        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; cursor:pointer; user-select:none;" onclick="toggleITOnly()">Ver 1.5.9 &nbsp;2/27/2026</div>
+        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; cursor:pointer; user-select:none;" onclick="toggleITOnly()">Ver 1.5.10 &nbsp;2/27/2026</div>
     </div>
 
     <!-- ══ METER READING UI ════════════════════════════════════════ -->
@@ -1524,9 +1524,13 @@
         }
 
         // ── Voice input ───────────────────────────────────────────
-        // iOS Safari fix: a SpeechRecognition instance cannot be restarted after
-        // onend fires — create a fresh instance each activation instead.
+        // iOS Safari quirks:
+        //   1. Cannot call .start() on a used instance — must create a fresh one.
+        //   2. Shows a mic-permission banner on EVERY .start() call, so we must
+        //      NOT auto-restart on iOS (causes permission-popup spam).
         const SpeechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
         let voiceRecognition = null;
         let voiceListening   = false;
         let voiceGotResult   = false;
@@ -1580,9 +1584,15 @@
 
             rec.onend = () => {
                 if (voiceListening && !voiceGotResult) {
-                    // Fresh instance required on iOS Safari — cannot reuse after onend
-                    voiceRecognition = createRecognition();
-                    try { voiceRecognition.start(); } catch(e) { stopVoice(); }
+                    if (isIOS) {
+                        // iOS: every .start() call shows a permission banner — don't auto-restart.
+                        // Reset the button; user taps again to retry.
+                        stopVoice();
+                    } else {
+                        // Non-iOS: fresh instance required (cannot reuse after onend)
+                        voiceRecognition = createRecognition();
+                        try { voiceRecognition.start(); } catch(e) { stopVoice(); }
+                    }
                 } else {
                     voiceListening = false;
                     const micBtn = document.getElementById('micBtn');
