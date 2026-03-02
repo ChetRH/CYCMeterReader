@@ -319,7 +319,7 @@
 
         <input type="checkbox" id="chkITOnly" checked style="display:none;">
 
-        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; cursor:pointer; user-select:none;" onclick="toggleITOnly()">Ver 1.6.1 &nbsp;2/27/2026</div>
+        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; cursor:pointer; user-select:none;" onclick="toggleITOnly()">Ver 1.6.2 &nbsp;3/2/2026</div>
     </div>
 
     <!-- ══ METER READING UI ════════════════════════════════════════ -->
@@ -619,6 +619,14 @@
             if (navFn) navFn();
             else advanceSlip();
             focusMeterInput();
+
+            // Debounced sync — waits 3 s after the last Save & Next before uploading,
+            // so rapid taps through slips don't hammer SharePoint on every press.
+            if (saveNextSyncTimer) clearTimeout(saveNextSyncTimer);
+            saveNextSyncTimer = setTimeout(() => {
+                saveNextSyncTimer = null;
+                runAutoSync();
+            }, 3000);
         }
 
         function renderCount() {
@@ -724,6 +732,7 @@
         let msalAccount  = null;
         let autoSyncTimer = null;
         let syncBusy = false;
+        let saveNextSyncTimer = null; // debounce sync after Save & Next
 
         (function loadMSAL() {
             const s = document.createElement('script');
