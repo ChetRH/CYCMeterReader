@@ -327,7 +327,7 @@
         <input type="checkbox" id="chkITOnly" checked style="display:none;">
 
         <div style="position:fixed; bottom:14px; left:50%; transform:translateX(-50%); font-size:12pt; color:#888; user-select:none; display:flex; align-items:center; gap:14px; padding-bottom:env(safe-area-inset-bottom, 0);">
-            <span style="cursor:pointer;" onclick="toggleITOnly()">Ver 1.6.9 &nbsp;4/9/2026</span>
+            <span style="cursor:pointer;" onclick="toggleITOnly()">Ver 1.6.10 &nbsp;4/9/2026</span>
             <span style="cursor:pointer; font-size:18pt; padding:6px 10px;" onclick="forceReload()" title="Reload latest version (clears cache)">🔄</span>
         </div>
     </div>
@@ -1652,13 +1652,14 @@
 
             rec.onerror = (e) => {
                 voiceErrorShown = true;
-                const msg = e.error === 'no-speech'    ? 'Didn\'t hear anything'
+                const elapsed = voiceStartTs ? Date.now() - voiceStartTs : 0;
+                const msg = e.error === 'no-speech'    ? `Didn't hear anything (${elapsed}ms)`
                           : e.error === 'not-allowed'  ? 'Mic permission denied — check iOS Settings > Safari > Microphone'
-                          : e.error === 'aborted'      ? ''   // user-initiated, no toast
+                          : e.error === 'aborted'      ? `Aborted by iOS after ${elapsed}ms`
                           : e.error === 'audio-capture'? 'No microphone available'
                           : e.error === 'service-not-allowed' ? 'Voice service not allowed'
-                          : 'Voice error: ' + e.error;
-                if (msg) showToast('🎤 ' + msg, true);
+                          : 'Voice error: ' + e.error + ` (${elapsed}ms)`;
+                showToast('🎤 ' + msg, true);
                 stopVoice();
             };
 
@@ -1684,11 +1685,32 @@
         const isStandalonePWA = window.navigator.standalone === true ||
                                  window.matchMedia('(display-mode: standalone)').matches;
 
+        // Hidden audio sink — iOS keeps the audio session alive when a
+        // MediaStream is attached to a playing <audio> element. A bare,
+        // unattached stream often gets reclaimed within ~1 s.
+        let voiceAudioSink = null;
+        function getAudioSink() {
+            if (voiceAudioSink) return voiceAudioSink;
+            voiceAudioSink = document.createElement('audio');
+            voiceAudioSink.muted = true;          // don't actually play audio back
+            voiceAudioSink.playsInline = true;
+            voiceAudioSink.setAttribute('playsinline', '');
+            voiceAudioSink.style.cssText = 'position:fixed;left:-9999px;width:1px;height:1px;opacity:0;';
+            document.body.appendChild(voiceAudioSink);
+            return voiceAudioSink;
+        }
+
         async function openMicStream() {
             if (voiceAudioStream) return true;
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return true;
             try {
                 voiceAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                // Attach to hidden <audio> to keep the iOS audio session alive
+                try {
+                    const sink = getAudioSink();
+                    sink.srcObject = voiceAudioStream;
+                    await sink.play().catch(() => {});
+                } catch(e) { /* non-fatal */ }
                 return true;
             } catch (e) {
                 showToast('🎤 Mic blocked: ' + (e.name || e.message || 'unknown'), true);
@@ -1697,6 +1719,10 @@
         }
 
         function closeMicStream() {
+            if (voiceAudioSink) {
+                try { voiceAudioSink.pause(); } catch(e) {}
+                try { voiceAudioSink.srcObject = null; } catch(e) {}
+            }
             if (voiceAudioStream) {
                 try { voiceAudioStream.getTracks().forEach(t => t.stop()); } catch(e) {}
                 voiceAudioStream = null;
@@ -1713,12 +1739,12 @@
             voiceStartTs = 0;
             setMicState(true);
 
-            // Open mic stream and keep it alive for the whole recognition
-            // session — required by iOS Safari PWA mode.
-            if (isStandalonePWA) {
-                const ok = await openMicStream();
-                if (!ok) { stopVoice(); return; }
-            }
+            // Open mic stream (and hidden audio sink) to keep the iOS audio
+            // session alive for the whole recognition duration. Do this for
+            // all iOS contexts, not just standalone PWA — Safari tab mode
+            // benefits too.
+            const ok = await openMicStream();
+            if (!ok) { stopVoice(); return; }
 
             voiceRecognition = createRecognition();
             try {
