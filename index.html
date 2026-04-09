@@ -355,13 +355,9 @@
             </div>
         </div>
         <div class="form-group">
-            <label>Previous Reading</label>
-            <input type="number" id="prevReading" placeholder="auto-filled" inputmode="numeric" autocomplete="off" readonly style="opacity:0.7; cursor:default;">
-        </div>
-        <div class="form-group">
             <label>Current Reading</label>
             <div style="display:flex; gap:8px; align-items:center;" onclick="focusMeterInput()">
-                <input type="text" id="meterReading" value="000000" autocomplete="off"
+                <input type="text" id="meterReading" value="0000000" autocomplete="off"
                     style="flex:1; letter-spacing:4px; font-variant-numeric:tabular-nums; cursor:pointer;"
                     readonly>
                 <button class="btn-mic" id="micBtn" onclick="toggleVoice(); event.stopPropagation();" title="Speak the meter reading">🎤</button>
@@ -370,6 +366,11 @@
             <input id="meterGhost" type="text" inputmode="numeric" pattern="[0-9]*"
                 autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
                 style="position:fixed; top:0; left:0; width:1px; height:1px; opacity:0; pointer-events:none; border:none; padding:0;">
+        </div>
+        <div class="form-group">
+            <label style="font-size:0.75rem; opacity:0.7;">🔒 Previous Reading</label>
+            <input type="text" id="prevReading" placeholder="auto-filled" autocomplete="off" readonly
+                style="font-size:0.95rem; padding:6px 10px; letter-spacing:2px; font-variant-numeric:tabular-nums; opacity:0.6; cursor:not-allowed; background:#0a1420; border:1px dashed #2a3a50; color:#8aa;">
         </div>
         <div class="form-group" id="usageDisplay" style="display:none;">
             <label>Usage</label>
@@ -535,8 +536,9 @@
             if (val === '' || val === null || val === undefined) return '';
             const s = val.toString().trim().replace(/\D/g, '');
             if (s === '') return '';
-            if (s.length >= 6) return s.padStart(6, '0'); // already 6 digits — use as-is
-            return s.padStart(5, '0') + '0';              // 5 or fewer digits — pad to 5 + trailing 0
+            if (s.length >= 7) return s.padStart(7, '0'); // already 7 digits — use as-is
+            if (s.length === 6) return s + '0';           // 6-digit trimmed — add trailing 0 → 7
+            return ('0' + s.padStart(5, '0') + '0');      // 5 or fewer — pad to 5 + trailing 0, leading pad to 7
         }
 
         // ── Toast ─────────────────────────────────────────────────
@@ -552,7 +554,7 @@
         function updateUsageDisplay() {
             const prevDisplay = document.getElementById('prevReading').value.trim();
             const prev = parseFloat(prevDisplay.length > 0 ? prevDisplay.slice(0, -1) : '');
-            const curr = meterBuffer === '000000' ? NaN : parseFloat(trimReading(meterBuffer));
+            const curr = meterBuffer === '0000000' ? NaN : parseFloat(trimReading(meterBuffer));
             const box = document.getElementById('usageDisplay');
             const val = document.getElementById('usageValue');
             if (!isNaN(prev) && !isNaN(curr) && curr >= prev) {
@@ -572,7 +574,7 @@
         // ── Save reading ──────────────────────────────────────────
         function saveReading(skipAutoAdvance = false, navFn = null) {
             const currRaw = meterBuffer;
-            if (currRaw === '000000') {
+            if (currRaw === '0000000') {
                 // No data entered — just move on without saving
                 document.getElementById('slipNotes').value = '';
                 document.getElementById('usageDisplay').style.display = 'none';
@@ -634,16 +636,16 @@
         }
 
         // ── Calculator-style meter entry ──────────────────────────
-        let meterBuffer = '000000';
+        let meterBuffer = '0000000';
 
         function setMeterBuffer(val) {
-            meterBuffer = val.padStart(6, '0').slice(-6);
+            meterBuffer = val.padStart(7, '0').slice(-7);
             document.getElementById('meterReading').value = meterBuffer;
             updateUsageDisplay();
         }
 
         function clearMeterField() {
-            setMeterBuffer('000000');
+            setMeterBuffer('0000000');
         }
 
         // focusMeterInput: focuses the hidden ghost input so the mobile number
@@ -656,7 +658,7 @@
 
         function _handleMeterKey(key) {
             if (key >= '0' && key <= '9') {
-                setMeterBuffer((meterBuffer + key).slice(-6));
+                setMeterBuffer((meterBuffer + key).slice(-7));
                 return true;
             } else if (key === 'Backspace') {
                 setMeterBuffer('0' + meterBuffer.slice(0, -1));
@@ -1569,8 +1571,8 @@
                         const raw     = e.results[ri][ai].transcript.trim();
                         const digits  = raw.replace(/[\s,]/g, '');
                         const stripped = raw.replace(/\D/g, '');
-                        const best = /^\d{6}$/.test(digits) ? digits
-                                   : /^\d{6}$/.test(stripped) ? stripped : null;
+                        const best = /^\d{6,7}$/.test(digits) ? digits
+                                   : /^\d{6,7}$/.test(stripped) ? stripped : null;
                         if (best) {
                             voiceGotResult = true;
                             setMeterBuffer(best);
