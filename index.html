@@ -327,7 +327,7 @@
         <input type="checkbox" id="chkITOnly" checked style="display:none;">
 
         <div style="position:fixed; bottom:14px; left:50%; transform:translateX(-50%); font-size:12pt; color:#888; user-select:none; display:flex; align-items:center; gap:14px; padding-bottom:env(safe-area-inset-bottom, 0);">
-            <span style="cursor:pointer;" onclick="toggleITOnly()">Ver 1.6.8 &nbsp;4/9/2026</span>
+            <span style="cursor:pointer;" onclick="toggleITOnly()">Ver 1.6.9 &nbsp;4/9/2026</span>
             <span style="cursor:pointer; font-size:18pt; padding:6px 10px;" onclick="forceReload()" title="Reload latest version (clears cache)">🔄</span>
         </div>
     </div>
@@ -1585,6 +1585,8 @@
         let voiceStarted     = false;
         let voiceErrorShown  = false;
         let voiceWatchdog    = null;
+        let voiceAudioStream = null;
+        let voiceStartTs     = 0;
 
         function setMicState(listening) {
             voiceListening = listening;
@@ -1630,6 +1632,7 @@
 
             rec.onstart = () => {
                 voiceStarted = true;
+                voiceStartTs = Date.now();
                 showToast('🎤 Listening…', false);
             };
 
@@ -1664,7 +1667,8 @@
                     if (!voiceStarted) {
                         showToast('🎤 Recognition never started — check iOS mic permission', true);
                     } else {
-                        showToast('🎤 Didn\'t catch that — tap mic and speak clearly', false);
+                        const elapsed = voiceStartTs ? Date.now() - voiceStartTs : 0;
+                        showToast(`🎤 Ended after ${elapsed}ms — no speech captured`, true);
                     }
                 }
                 stopVoice();
@@ -1673,22 +1677,29 @@
             return rec;
         }
 
-        // iOS PWA (home-screen) mode needs the mic permission warmed up via
-        // getUserMedia before SpeechRecognition will actually listen. Without
-        // this, onstart fires but the recognizer never receives audio.
+        // iOS PWA (home-screen) mode needs the mic session held open via
+        // getUserMedia for the whole duration of SpeechRecognition — if we
+        // stop the stream early, iOS tears the audio session down and the
+        // recognizer ends within a second with no audio captured.
         const isStandalonePWA = window.navigator.standalone === true ||
                                  window.matchMedia('(display-mode: standalone)').matches;
 
-        async function prewarmMicrophone() {
+        async function openMicStream() {
+            if (voiceAudioStream) return true;
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return true;
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                // We only wanted the permission — stop the stream immediately
-                stream.getTracks().forEach(t => t.stop());
+                voiceAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 return true;
             } catch (e) {
                 showToast('🎤 Mic blocked: ' + (e.name || e.message || 'unknown'), true);
                 return false;
+            }
+        }
+
+        function closeMicStream() {
+            if (voiceAudioStream) {
+                try { voiceAudioStream.getTracks().forEach(t => t.stop()); } catch(e) {}
+                voiceAudioStream = null;
             }
         }
 
@@ -1699,10 +1710,13 @@
             voiceGotResult = false;
             voiceStarted = false;
             voiceErrorShown = false;
+            voiceStartTs = 0;
             setMicState(true);
 
+            // Open mic stream and keep it alive for the whole recognition
+            // session — required by iOS Safari PWA mode.
             if (isStandalonePWA) {
-                const ok = await prewarmMicrophone();
+                const ok = await openMicStream();
                 if (!ok) { stopVoice(); return; }
             }
 
@@ -1751,6 +1765,7 @@
                 try { rec.onstart = null; rec.onresult = null; rec.onerror = null; rec.onend = null; } catch(e) {}
                 try { rec.abort(); } catch(e) {}
             }
+            closeMicStream();
         }
     </script>
 </body>
