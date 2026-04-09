@@ -326,9 +326,9 @@
 
         <input type="checkbox" id="chkITOnly" checked style="display:none;">
 
-        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; user-select:none; display:flex; align-items:center; gap:10px;">
-            <span style="cursor:pointer;" onclick="toggleITOnly()">Ver 1.6.7 &nbsp;4/9/2026</span>
-            <span style="cursor:pointer; font-size:16pt;" onclick="forceReload()" title="Reload latest version (clears cache)">🔄</span>
+        <div style="position:fixed; bottom:14px; left:50%; transform:translateX(-50%); font-size:12pt; color:#888; user-select:none; display:flex; align-items:center; gap:14px; padding-bottom:env(safe-area-inset-bottom, 0);">
+            <span style="cursor:pointer;" onclick="toggleITOnly()">Ver 1.6.8 &nbsp;4/9/2026</span>
+            <span style="cursor:pointer; font-size:18pt; padding:6px 10px;" onclick="forceReload()" title="Reload latest version (clears cache)">🔄</span>
         </div>
     </div>
 
@@ -1673,13 +1673,39 @@
             return rec;
         }
 
-        function toggleVoice() {
+        // iOS PWA (home-screen) mode needs the mic permission warmed up via
+        // getUserMedia before SpeechRecognition will actually listen. Without
+        // this, onstart fires but the recognizer never receives audio.
+        const isStandalonePWA = window.navigator.standalone === true ||
+                                 window.matchMedia('(display-mode: standalone)').matches;
+
+        async function prewarmMicrophone() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return true;
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                // We only wanted the permission — stop the stream immediately
+                stream.getTracks().forEach(t => t.stop());
+                return true;
+            } catch (e) {
+                showToast('🎤 Mic blocked: ' + (e.name || e.message || 'unknown'), true);
+                return false;
+            }
+        }
+
+        async function toggleVoice() {
             if (voiceListening) { stopVoice(); return; }
             if (!SpeechRecognitionClass) return;
+
             voiceGotResult = false;
             voiceStarted = false;
             voiceErrorShown = false;
             setMicState(true);
+
+            if (isStandalonePWA) {
+                const ok = await prewarmMicrophone();
+                if (!ok) { stopVoice(); return; }
+            }
+
             voiceRecognition = createRecognition();
             try {
                 voiceRecognition.start();
