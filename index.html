@@ -1542,18 +1542,57 @@
         }
 
         // ── Voice input ───────────────────────────────────────────
-        // iOS Safari quirks:
-        //   1. Cannot call .start() on a used instance — must create a fresh one.
-        //   2. Shows a mic-permission banner on EVERY .start() call, so we must
-        //      NOT auto-restart on iOS (causes permission-popup spam).
+        // iOS Safari Web Speech API is very limited. Rules that matter:
+        //   1. Single-shot only (continuous:false). iOS ignores continuous mode
+        //      and auto-ends after the first pause — never auto-restart, it
+        //      spams the permission banner and leaks recognition instances.
+        //   2. interimResults:true is required — final onresult often never fires.
+        //   3. Always reset button state through setMicState() so errors or
+        //      silent hangs can't leave the button stuck in listening mode.
+        //   4. A watchdog timer force-stops after MAX_LISTEN_MS.
+        //   5. Parse digits flexibly — iOS may return "one two three…" or
+        //      "1,234,567" instead of a clean digit string.
         const SpeechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const MAX_LISTEN_MS = 10000;
+
+        const WORD_DIGITS = {
+            zero:'0', oh:'0', o:'0',
+            one:'1', won:'1',
+            two:'2', too:'2', to:'2',
+            three:'3', tree:'3',
+            four:'4', for:'4', fore:'4',
+            five:'5',
+            six:'6', sex:'6',
+            seven:'7',
+            eight:'8', ate:'8',
+            nine:'9', niner:'9'
+        };
+
+        function extractDigits(text) {
+            if (!text) return '';
+            let t = String(text).toLowerCase();
+            t = t.replace(/\b(zero|oh|one|two|three|four|five|six|seven|eight|nine|won|too|tree|for|fore|ate|niner|sex|o)\b/g,
+                w => WORD_DIGITS[w] || '');
+            return t.replace(/\D/g, '');
+        }
+
         let voiceRecognition = null;
         let voiceListening   = false;
         let voiceGotResult   = false;
-        let voiceStartTime   = null;
-        const IOS_MAX_LISTEN_MS = 60 * 1000; // allow iOS to restart for up to 60 s
+        let voiceWatchdog    = null;
+
+        function setMicState(listening) {
+            voiceListening = listening;
+            const btn = document.getElementById('micBtn');
+            if (!btn) return;
+            if (listening) {
+                btn.classList.add('listening');
+                btn.textContent = '⏹️';
+            } else {
+                btn.classList.remove('listening');
+                btn.textContent = '🎤';
+            }
+        }
 
         (function initVoice() {
             const micBtn = document.getElementById('micBtn');
@@ -1564,38 +1603,43 @@
             }
         })();
 
+        function handleTranscript(raw) {
+            const digits = extractDigits(raw);
+            if (digits.length >= 6) {
+                const best = digits.slice(-7); // last 7 digits wins
+                voiceGotResult = true;
+                setMeterBuffer(best);
+                showToast(`🎤 Got: ${best}`);
+                stopVoice();
+                return true;
+            }
+            return false;
+        }
+
         function createRecognition() {
             const rec = new SpeechRecognitionClass();
             rec.lang = 'en-US';
-            rec.interimResults = false;
+            rec.interimResults = true;       // iOS needs this — final often doesn't fire
             rec.maxAlternatives = 5;
-            rec.continuous = true;
+            rec.continuous = false;          // single-shot — iOS compatible
 
             rec.onresult = (e) => {
                 for (let ri = e.resultIndex; ri < e.results.length; ri++) {
-                    if (!e.results[ri].isFinal) continue;
-                    for (let ai = 0; ai < e.results[ri].length; ai++) {
-                        const raw     = e.results[ri][ai].transcript.trim();
-                        const digits  = raw.replace(/[\s,]/g, '');
-                        const stripped = raw.replace(/\D/g, '');
-                        const best = /^\d{6,7}$/.test(digits) ? digits
-                                   : /^\d{6,7}$/.test(stripped) ? stripped : null;
-                        if (best) {
-                            voiceGotResult = true;
-                            setMeterBuffer(best);
-                            showToast(`🎤 Got: ${best}`);
-                            stopVoice();
-                            return;
-                        }
+                    const result = e.results[ri];
+                    for (let ai = 0; ai < result.length; ai++) {
+                        if (handleTranscript(result[ai].transcript)) return;
                     }
-                    const heard = e.results[ri][0].transcript;
-                    showToast(`🎤 Heard "${heard}" — listening…`, false);
+                    if (!result.isFinal) {
+                        showToast(`🎤 ${result[0].transcript}…`, false);
+                    }
                 }
             };
 
             rec.onerror = (e) => {
-                if (e.error === 'no-speech') return;
-                if (e.error === 'aborted') return;
+                if (e.error === 'no-speech' || e.error === 'aborted') {
+                    stopVoice();
+                    return;
+                }
                 showToast('🎤 ' + (e.error === 'not-allowed'
                     ? 'Microphone permission denied'
                     : 'Voice error: ' + e.error), true);
@@ -1603,23 +1647,11 @@
             };
 
             rec.onend = () => {
+                // Always clean up — never auto-restart (iOS-safe)
                 if (voiceListening && !voiceGotResult) {
-                    const elapsed = voiceStartTime ? Date.now() - voiceStartTime : Infinity;
-                    if (isIOS && elapsed >= IOS_MAX_LISTEN_MS) {
-                        // iOS time limit reached — stop and let user tap again
-                        stopVoice();
-                        showToast('🎤 Timed out — tap mic to retry', false);
-                    } else {
-                        // Restart: fresh instance required on iOS (cannot reuse after onend)
-                        voiceRecognition = createRecognition();
-                        try { voiceRecognition.start(); } catch(e) { stopVoice(); }
-                    }
-                } else {
-                    voiceListening = false;
-                    const micBtn = document.getElementById('micBtn');
-                    micBtn.classList.remove('listening');
-                    micBtn.textContent = '🎤';
+                    showToast('🎤 Didn\'t catch that — tap mic to retry', false);
                 }
+                stopVoice();
             };
 
             return rec;
@@ -1628,24 +1660,36 @@
         function toggleVoice() {
             if (voiceListening) { stopVoice(); return; }
             if (!SpeechRecognitionClass) return;
-            const micBtn = document.getElementById('micBtn');
-            micBtn.classList.add('listening');
-            micBtn.textContent = '⏹️';
-            voiceListening = true;
             voiceGotResult = false;
-            voiceStartTime = Date.now();
+            setMicState(true);
             voiceRecognition = createRecognition();
-            try { voiceRecognition.start(); } catch(e) { stopVoice(); }
+            try {
+                voiceRecognition.start();
+            } catch (err) {
+                stopVoice();
+                return;
+            }
+            // Watchdog: force-stop if the Speech API hangs silently
+            if (voiceWatchdog) clearTimeout(voiceWatchdog);
+            voiceWatchdog = setTimeout(() => {
+                if (voiceListening) {
+                    showToast('🎤 Timed out — tap mic to retry', false);
+                    stopVoice();
+                }
+            }, MAX_LISTEN_MS);
         }
 
         function stopVoice() {
-            voiceListening = false;
+            setMicState(false);
             voiceGotResult = false;
-            const micBtn = document.getElementById('micBtn');
-            micBtn.classList.remove('listening');
-            micBtn.textContent = '🎤';
-            try { voiceRecognition && voiceRecognition.stop(); } catch(e) {}
+            if (voiceWatchdog) { clearTimeout(voiceWatchdog); voiceWatchdog = null; }
+            const rec = voiceRecognition;
             voiceRecognition = null;
+            if (rec) {
+                // Null handlers before aborting so stale callbacks can't re-fire
+                try { rec.onresult = null; rec.onerror = null; rec.onend = null; } catch(e) {}
+                try { rec.abort(); } catch(e) {}
+            }
         }
     </script>
 </body>
