@@ -186,35 +186,6 @@
         .slip-nav-btn:active { transform: scale(0.92); background: linear-gradient(135deg, #ffe066, #b8860b); }
         .slip-nav-btn:disabled { opacity: 0.2; cursor: not-allowed; box-shadow: none; }
 
-        .btn-mic {
-            background: linear-gradient(135deg, #1b5e20, #2e7d32);
-            border: 2px solid #66bb6a;
-            border-radius: 12px;
-            color: #66bb6a;
-            font-size: 1.5rem;
-            width: 56px;
-            height: 56px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.15s, transform 0.1s, border-color 0.15s;
-            flex-shrink: 0;
-            box-shadow: 0 4px 12px rgba(102,187,106,0.25);
-        }
-        .btn-mic:active { transform: scale(0.92); }
-        .btn-mic.listening {
-            background: linear-gradient(135deg, #b71c1c, #ef5350);
-            border-color: #ff8a80;
-            color: white;
-            animation: mic-pulse 0.8s ease-in-out infinite alternate;
-        }
-        .btn-mic.unsupported { opacity: 0.3; cursor: not-allowed; }
-        @keyframes mic-pulse {
-            from { box-shadow: 0 4px 12px rgba(239,83,80,0.4); }
-            to   { box-shadow: 0 4px 24px rgba(239,83,80,0.9); }
-        }
-
         /* ── Home Screen ─────────────────────────────────────────── */
         #homeOverlay {
             position: fixed;
@@ -327,7 +298,7 @@
         <input type="checkbox" id="chkITOnly" checked style="display:none;">
 
         <div style="position:fixed; bottom:14px; left:50%; transform:translateX(-50%); font-size:12pt; color:#888; user-select:none; display:flex; align-items:center; gap:14px; padding-bottom:env(safe-area-inset-bottom, 0);">
-            <span style="cursor:pointer;" onclick="toggleITOnly()">Ver 1.7.1 &nbsp;4/9/2026</span>
+            <span style="cursor:pointer;" onclick="toggleITOnly()">Ver 1.7.2 &nbsp;4/9/2026</span>
             <span style="cursor:pointer; font-size:18pt; padding:6px 10px;" onclick="forceReload()" title="Reload latest version (clears cache)">🔄</span>
         </div>
     </div>
@@ -370,7 +341,6 @@
                 <input type="text" id="meterReading" value="0000000" autocomplete="off"
                     style="flex:1; letter-spacing:4px; font-variant-numeric:tabular-nums; cursor:pointer;"
                     readonly>
-                <button class="btn-mic" id="micBtn" onclick="toggleVoice(); event.stopPropagation();" title="Speak the meter reading">🎤</button>
             </div>
             <!-- Hidden ghost input: gives mobile keyboard a real editable target -->
             <input id="meterGhost" type="text" inputmode="numeric" pattern="[0-9]*"
@@ -1544,254 +1514,6 @@
             await sendNotificationEmail();
         }
 
-        // ── Voice input ───────────────────────────────────────────
-        // iOS Safari Web Speech API is very limited. Rules that matter:
-        //   1. Single-shot only (continuous:false). iOS ignores continuous mode
-        //      and auto-ends after the first pause — never auto-restart, it
-        //      spams the permission banner and leaks recognition instances.
-        //   2. interimResults:true is required — final onresult often never fires.
-        //   3. Always reset button state through setMicState() so errors or
-        //      silent hangs can't leave the button stuck in listening mode.
-        //   4. A watchdog timer force-stops after MAX_LISTEN_MS.
-        //   5. Parse digits flexibly — iOS may return "one two three…" or
-        //      "1,234,567" instead of a clean digit string.
-        const SpeechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const MAX_LISTEN_MS = 10000;
-
-        // iOS third-party browsers (Edge, Chrome, Firefox) are all forced to
-        // use WebKit but Apple doesn't wire up the Web Speech API for them —
-        // .start() fires onstart then aborts within ~1 ms. Detect and route
-        // users to native iOS keyboard dictation instead.
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-        const ua = navigator.userAgent;
-        const isIOSSafariProper = isIOS &&
-            /Safari/.test(ua) &&
-            !/CriOS|FxiOS|EdgiOS|OPiOS|mercury|GSA/i.test(ua);
-        const webSpeechUsable = !!SpeechRecognitionClass && (!isIOS || isIOSSafariProper);
-
-        const WORD_DIGITS = {
-            zero:'0', oh:'0', o:'0',
-            one:'1', won:'1',
-            two:'2', too:'2', to:'2',
-            three:'3', tree:'3',
-            four:'4', for:'4', fore:'4',
-            five:'5',
-            six:'6', sex:'6',
-            seven:'7',
-            eight:'8', ate:'8',
-            nine:'9', niner:'9'
-        };
-
-        function extractDigits(text) {
-            if (!text) return '';
-            let t = String(text).toLowerCase();
-            t = t.replace(/\b(zero|oh|one|two|three|four|five|six|seven|eight|nine|won|too|tree|for|fore|ate|niner|sex|o)\b/g,
-                w => WORD_DIGITS[w] || '');
-            return t.replace(/\D/g, '');
-        }
-
-        let voiceRecognition = null;
-        let voiceListening   = false;
-        let voiceGotResult   = false;
-        let voiceStarted     = false;
-        let voiceErrorShown  = false;
-        let voiceWatchdog    = null;
-        let voiceAudioStream = null;
-        let voiceStartTs     = 0;
-
-        function setMicState(listening) {
-            voiceListening = listening;
-            const btn = document.getElementById('micBtn');
-            if (!btn) return;
-            if (listening) {
-                btn.classList.add('listening');
-                btn.textContent = '⏹️';
-            } else {
-                btn.classList.remove('listening');
-                btn.textContent = '🎤';
-            }
-        }
-
-        (function initVoice() {
-            const micBtn = document.getElementById('micBtn');
-            if (!webSpeechUsable) {
-                micBtn.classList.add('unsupported');
-                if (isIOS && !isIOSSafariProper) {
-                    micBtn.title = 'Voice input: tap the meter field and use the iOS keyboard mic';
-                    micBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        showToast('💡 Tap meter field, then tap the 🎤 on the iOS keyboard', false);
-                    };
-                } else {
-                    micBtn.title = 'Voice input not supported on this browser';
-                    micBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        showToast('⚠️ Voice input not supported on this browser', true);
-                    };
-                }
-            }
-        })();
-
-        function handleTranscript(raw) {
-            const digits = extractDigits(raw);
-            if (digits.length >= 6) {
-                const best = digits.slice(-7); // last 7 digits wins
-                voiceGotResult = true;
-                setMeterBuffer(best);
-                showToast(`🎤 Got: ${best}`);
-                stopVoice();
-                return true;
-            }
-            return false;
-        }
-
-        function createRecognition() {
-            const rec = new SpeechRecognitionClass();
-            rec.lang = 'en-US';
-            rec.interimResults = false;      // default — iOS Safari is unreliable with interim
-            rec.maxAlternatives = 5;
-            rec.continuous = false;          // single-shot — iOS compatible
-
-            rec.onstart = () => {
-                voiceStarted = true;
-                voiceStartTs = Date.now();
-                showToast('🎤 Listening…', false);
-            };
-
-            rec.onresult = (e) => {
-                for (let ri = e.resultIndex; ri < e.results.length; ri++) {
-                    const result = e.results[ri];
-                    for (let ai = 0; ai < result.length; ai++) {
-                        if (handleTranscript(result[ai].transcript)) return;
-                    }
-                    if (result.isFinal) {
-                        // We got a final result but no digits matched — tell user what we heard
-                        showToast(`🎤 Heard "${result[0].transcript}" — no digits`, true);
-                        voiceErrorShown = true;
-                    }
-                }
-            };
-
-            rec.onerror = (e) => {
-                voiceErrorShown = true;
-                const elapsed = voiceStartTs ? Date.now() - voiceStartTs : 0;
-                const msg = e.error === 'no-speech'    ? `Didn't hear anything (${elapsed}ms)`
-                          : e.error === 'not-allowed'  ? 'Mic permission denied — check iOS Settings > Safari > Microphone'
-                          : e.error === 'aborted'      ? `Aborted by iOS after ${elapsed}ms`
-                          : e.error === 'audio-capture'? 'No microphone available'
-                          : e.error === 'service-not-allowed' ? 'Voice service not allowed'
-                          : 'Voice error: ' + e.error + ` (${elapsed}ms)`;
-                showToast('🎤 ' + msg, true);
-                stopVoice();
-            };
-
-            rec.onend = () => {
-                if (!voiceErrorShown && !voiceGotResult) {
-                    if (!voiceStarted) {
-                        showToast('🎤 Recognition never started — check iOS mic permission', true);
-                    } else {
-                        const elapsed = voiceStartTs ? Date.now() - voiceStartTs : 0;
-                        showToast(`🎤 Ended after ${elapsed}ms — no speech captured`, true);
-                    }
-                }
-                stopVoice();
-            };
-
-            return rec;
-        }
-
-        // iOS PWA (home-screen) mode needs the mic session held open via
-        // getUserMedia for the whole duration of SpeechRecognition — if we
-        // stop the stream early, iOS tears the audio session down and the
-        // recognizer ends within a second with no audio captured.
-        const isStandalonePWA = window.navigator.standalone === true ||
-                                 window.matchMedia('(display-mode: standalone)').matches;
-
-        // Hidden audio sink — iOS keeps the audio session alive when a
-        // MediaStream is attached to a playing <audio> element. A bare,
-        // unattached stream often gets reclaimed within ~1 s.
-        let voiceAudioSink = null;
-        function getAudioSink() {
-            if (voiceAudioSink) return voiceAudioSink;
-            voiceAudioSink = document.createElement('audio');
-            voiceAudioSink.muted = true;          // don't actually play audio back
-            voiceAudioSink.playsInline = true;
-            voiceAudioSink.setAttribute('playsinline', '');
-            voiceAudioSink.style.cssText = 'position:fixed;left:-9999px;width:1px;height:1px;opacity:0;';
-            document.body.appendChild(voiceAudioSink);
-            return voiceAudioSink;
-        }
-
-        async function openMicStream() {
-            if (voiceAudioStream) return true;
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return true;
-            try {
-                voiceAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                // Attach to hidden <audio> to keep the iOS audio session alive
-                try {
-                    const sink = getAudioSink();
-                    sink.srcObject = voiceAudioStream;
-                    await sink.play().catch(() => {});
-                } catch(e) { /* non-fatal */ }
-                return true;
-            } catch (e) {
-                showToast('🎤 Mic blocked: ' + (e.name || e.message || 'unknown'), true);
-                return false;
-            }
-        }
-
-        function closeMicStream() {
-            if (voiceAudioSink) {
-                try { voiceAudioSink.pause(); } catch(e) {}
-                try { voiceAudioSink.srcObject = null; } catch(e) {}
-            }
-            if (voiceAudioStream) {
-                try { voiceAudioStream.getTracks().forEach(t => t.stop()); } catch(e) {}
-                voiceAudioStream = null;
-            }
-        }
-
-        async function toggleVoice() {
-            if (voiceListening) { stopVoice(); return; }
-            if (!webSpeechUsable) {
-                if (isIOS && !isIOSSafariProper) {
-                    showToast('💡 Tap meter field, then tap the 🎤 on the iOS keyboard', false);
-                }
-                return;
-            }
-
-            voiceGotResult = false;
-            voiceStarted = false;
-            voiceErrorShown = false;
-            voiceStartTs = 0;
-            setMicState(true);
-
-            // Open mic stream (and hidden audio sink) to keep the iOS audio
-            // session alive for the whole recognition duration. Do this for
-            // all iOS contexts, not just standalone PWA — Safari tab mode
-            // benefits too.
-            const ok = await openMicStream();
-            if (!ok) { stopVoice(); return; }
-
-            voiceRecognition = createRecognition();
-            try {
-                voiceRecognition.start();
-            } catch (err) {
-                showToast('🎤 Start failed: ' + (err && err.message || err), true);
-                stopVoice();
-                return;
-            }
-            // Watchdog: force-stop if the Speech API hangs silently
-            if (voiceWatchdog) clearTimeout(voiceWatchdog);
-            voiceWatchdog = setTimeout(() => {
-                if (voiceListening) {
-                    showToast('🎤 Timed out — tap mic to retry', false);
-                    stopVoice();
-                }
-            }, MAX_LISTEN_MS);
-        }
-
         // ── Force reload (bypass iOS PWA cache) ───────────────────
         // iOS aggressively caches pages added to the home screen. Tapping the
         // 🔄 button clears any CacheStorage entries and reloads with a
@@ -1808,19 +1530,6 @@
             location.replace(base + '?v=' + Date.now());
         }
 
-        function stopVoice() {
-            setMicState(false);
-            voiceGotResult = false;
-            if (voiceWatchdog) { clearTimeout(voiceWatchdog); voiceWatchdog = null; }
-            const rec = voiceRecognition;
-            voiceRecognition = null;
-            if (rec) {
-                // Null handlers before aborting so stale callbacks can't re-fire
-                try { rec.onstart = null; rec.onresult = null; rec.onerror = null; rec.onend = null; } catch(e) {}
-                try { rec.abort(); } catch(e) {}
-            }
-            closeMicStream();
-        }
     </script>
 </body>
 </html>
