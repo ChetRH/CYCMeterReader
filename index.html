@@ -327,7 +327,7 @@
         <input type="checkbox" id="chkITOnly" checked style="display:none;">
 
         <div style="position:fixed; bottom:14px; left:50%; transform:translateX(-50%); font-size:12pt; color:#888; user-select:none; display:flex; align-items:center; gap:14px; padding-bottom:env(safe-area-inset-bottom, 0);">
-            <span style="cursor:pointer;" onclick="toggleITOnly()">Ver 1.6.10 &nbsp;4/9/2026</span>
+            <span style="cursor:pointer;" onclick="toggleITOnly()">Ver 1.6.11 &nbsp;4/9/2026</span>
             <span style="cursor:pointer; font-size:18pt; padding:6px 10px;" onclick="forceReload()" title="Reload latest version (clears cache)">🔄</span>
         </div>
     </div>
@@ -1558,6 +1558,18 @@
         const SpeechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition;
         const MAX_LISTEN_MS = 10000;
 
+        // iOS third-party browsers (Edge, Chrome, Firefox) are all forced to
+        // use WebKit but Apple doesn't wire up the Web Speech API for them —
+        // .start() fires onstart then aborts within ~1 ms. Detect and route
+        // users to native iOS keyboard dictation instead.
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const ua = navigator.userAgent;
+        const isIOSSafariProper = isIOS &&
+            /Safari/.test(ua) &&
+            !/CriOS|FxiOS|EdgiOS|OPiOS|mercury|GSA/i.test(ua);
+        const webSpeechUsable = !!SpeechRecognitionClass && (!isIOS || isIOSSafariProper);
+
         const WORD_DIGITS = {
             zero:'0', oh:'0', o:'0',
             one:'1', won:'1',
@@ -1603,10 +1615,21 @@
 
         (function initVoice() {
             const micBtn = document.getElementById('micBtn');
-            if (!SpeechRecognitionClass) {
+            if (!webSpeechUsable) {
                 micBtn.classList.add('unsupported');
-                micBtn.title = 'Voice input not supported on this browser';
-                micBtn.onclick = () => showToast('⚠️ Voice input not supported on this browser', true);
+                if (isIOS && !isIOSSafariProper) {
+                    micBtn.title = 'Voice input: tap the meter field and use the iOS keyboard mic';
+                    micBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        showToast('💡 Tap meter field, then tap the 🎤 on the iOS keyboard', false);
+                    };
+                } else {
+                    micBtn.title = 'Voice input not supported on this browser';
+                    micBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        showToast('⚠️ Voice input not supported on this browser', true);
+                    };
+                }
             }
         })();
 
@@ -1731,7 +1754,12 @@
 
         async function toggleVoice() {
             if (voiceListening) { stopVoice(); return; }
-            if (!SpeechRecognitionClass) return;
+            if (!webSpeechUsable) {
+                if (isIOS && !isIOSSafariProper) {
+                    showToast('💡 Tap meter field, then tap the 🎤 on the iOS keyboard', false);
+                }
+                return;
+            }
 
             voiceGotResult = false;
             voiceStarted = false;
