@@ -326,7 +326,7 @@
 
         <input type="checkbox" id="chkITOnly" checked style="display:none;">
 
-        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; cursor:pointer; user-select:none;" onclick="toggleITOnly()">Ver 1.6.5 &nbsp;4/9/2026</div>
+        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; cursor:pointer; user-select:none;" onclick="toggleITOnly()">Ver 1.6.6 &nbsp;4/9/2026</div>
     </div>
 
     <!-- ══ METER READING UI ════════════════════════════════════════ -->
@@ -1579,6 +1579,8 @@
         let voiceRecognition = null;
         let voiceListening   = false;
         let voiceGotResult   = false;
+        let voiceStarted     = false;
+        let voiceErrorShown  = false;
         let voiceWatchdog    = null;
 
         function setMicState(listening) {
@@ -1619,9 +1621,14 @@
         function createRecognition() {
             const rec = new SpeechRecognitionClass();
             rec.lang = 'en-US';
-            rec.interimResults = true;       // iOS needs this — final often doesn't fire
+            rec.interimResults = false;      // default — iOS Safari is unreliable with interim
             rec.maxAlternatives = 5;
             rec.continuous = false;          // single-shot — iOS compatible
+
+            rec.onstart = () => {
+                voiceStarted = true;
+                showToast('🎤 Listening…', false);
+            };
 
             rec.onresult = (e) => {
                 for (let ri = e.resultIndex; ri < e.results.length; ri++) {
@@ -1629,27 +1636,33 @@
                     for (let ai = 0; ai < result.length; ai++) {
                         if (handleTranscript(result[ai].transcript)) return;
                     }
-                    if (!result.isFinal) {
-                        showToast(`🎤 ${result[0].transcript}…`, false);
+                    if (result.isFinal) {
+                        // We got a final result but no digits matched — tell user what we heard
+                        showToast(`🎤 Heard "${result[0].transcript}" — no digits`, true);
+                        voiceErrorShown = true;
                     }
                 }
             };
 
             rec.onerror = (e) => {
-                if (e.error === 'no-speech' || e.error === 'aborted') {
-                    stopVoice();
-                    return;
-                }
-                showToast('🎤 ' + (e.error === 'not-allowed'
-                    ? 'Microphone permission denied'
-                    : 'Voice error: ' + e.error), true);
+                voiceErrorShown = true;
+                const msg = e.error === 'no-speech'    ? 'Didn\'t hear anything'
+                          : e.error === 'not-allowed'  ? 'Mic permission denied — check iOS Settings > Safari > Microphone'
+                          : e.error === 'aborted'      ? ''   // user-initiated, no toast
+                          : e.error === 'audio-capture'? 'No microphone available'
+                          : e.error === 'service-not-allowed' ? 'Voice service not allowed'
+                          : 'Voice error: ' + e.error;
+                if (msg) showToast('🎤 ' + msg, true);
                 stopVoice();
             };
 
             rec.onend = () => {
-                // Always clean up — never auto-restart (iOS-safe)
-                if (voiceListening && !voiceGotResult) {
-                    showToast('🎤 Didn\'t catch that — tap mic to retry', false);
+                if (!voiceErrorShown && !voiceGotResult) {
+                    if (!voiceStarted) {
+                        showToast('🎤 Recognition never started — check iOS mic permission', true);
+                    } else {
+                        showToast('🎤 Didn\'t catch that — tap mic and speak clearly', false);
+                    }
                 }
                 stopVoice();
             };
@@ -1661,11 +1674,14 @@
             if (voiceListening) { stopVoice(); return; }
             if (!SpeechRecognitionClass) return;
             voiceGotResult = false;
+            voiceStarted = false;
+            voiceErrorShown = false;
             setMicState(true);
             voiceRecognition = createRecognition();
             try {
                 voiceRecognition.start();
             } catch (err) {
+                showToast('🎤 Start failed: ' + (err && err.message || err), true);
                 stopVoice();
                 return;
             }
@@ -1687,7 +1703,7 @@
             voiceRecognition = null;
             if (rec) {
                 // Null handlers before aborting so stale callbacks can't re-fire
-                try { rec.onresult = null; rec.onerror = null; rec.onend = null; } catch(e) {}
+                try { rec.onstart = null; rec.onresult = null; rec.onerror = null; rec.onend = null; } catch(e) {}
                 try { rec.abort(); } catch(e) {}
             }
         }
