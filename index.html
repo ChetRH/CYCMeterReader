@@ -326,7 +326,10 @@
 
         <input type="checkbox" id="chkITOnly" checked style="display:none;">
 
-        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; cursor:pointer; user-select:none;" onclick="toggleITOnly()">Ver 1.6.6 &nbsp;4/9/2026</div>
+        <div style="position:fixed; bottom:6px; right:10px; font-size:12pt; color:#888; user-select:none; display:flex; align-items:center; gap:10px;">
+            <span style="cursor:pointer;" onclick="toggleITOnly()">Ver 1.6.7 &nbsp;4/9/2026</span>
+            <span style="cursor:pointer; font-size:16pt;" onclick="forceReload()" title="Reload latest version (clears cache)">🔄</span>
+        </div>
     </div>
 
     <!-- ══ METER READING UI ════════════════════════════════════════ -->
@@ -1693,6 +1696,22 @@
                     stopVoice();
                 }
             }, MAX_LISTEN_MS);
+        }
+
+        // ── Force reload (bypass iOS PWA cache) ───────────────────
+        // iOS aggressively caches pages added to the home screen. Tapping the
+        // 🔄 button clears any CacheStorage entries and reloads with a
+        // cache-busting query string so the latest index.html is fetched.
+        async function forceReload() {
+            showToast('🔄 Reloading latest version…', false);
+            try {
+                if (window.caches) {
+                    const keys = await caches.keys();
+                    await Promise.all(keys.map(k => caches.delete(k)));
+                }
+            } catch (e) { /* ignore */ }
+            const base = location.href.split('?')[0].split('#')[0];
+            location.replace(base + '?v=' + Date.now());
         }
 
         function stopVoice() {
