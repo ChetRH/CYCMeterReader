@@ -298,7 +298,7 @@
         <input type="checkbox" id="chkITOnly" checked style="display:none;">
 
         <div style="position:fixed; bottom:14px; left:50%; transform:translateX(-50%); font-size:12pt; color:#888; user-select:none; display:flex; align-items:center; gap:14px; padding-bottom:env(safe-area-inset-bottom, 0);">
-            <span style="cursor:pointer;" onclick="toggleITOnly()">Ver 1.7.3 &nbsp;4/26/2026</span>
+            <span style="cursor:pointer;" onclick="toggleITOnly()">Ver 1.7.5 &nbsp;4/26/2026</span>
             <span style="cursor:pointer; font-size:18pt; padding:6px 10px;" onclick="forceReload()" title="Reload latest version (clears cache)">🔄</span>
         </div>
     </div>
@@ -338,7 +338,7 @@
         <div class="form-group">
             <label>Current Reading</label>
             <div style="display:flex; gap:8px; align-items:center;" onclick="focusMeterInput()">
-                <input type="text" id="meterReading" value="0000000" autocomplete="off"
+                <input type="text" id="meterReading" value="00000000" autocomplete="off"
                     style="flex:1; letter-spacing:4px; font-variant-numeric:tabular-nums; cursor:pointer;"
                     readonly>
             </div>
@@ -394,12 +394,12 @@
             B: [
                 'B01','B03','B05','B07','B09','B11','B13','B15','B17','B19','B21','B23','B25','B27','B29',
                 'B-M/N','B-N','B-S','B-M/S',
-                'B28','B26','B24','B22','B20','B18','B16','B14','B12','B10','B08','B06','B04'
+                'B28','B26','B24','B22','B20','B18','B16','B14','B12','B10','B08','B06','B04','B02'
             ],
             C: [
                 'C03','C05','C07','C09','C11','C13','C15','C17','C19','C21','C23','C25','C27',
                 'C-M/N','C-N','C-S','C-M/S',
-                'C36','C34','C32','C30','C28','C26','C24','C22','C20','C18','C16','C14','C12','C10','C08','C06','C04','C02'
+                'C36','C34','C32','C30','C28','C26','C24','C22','C20','C18','C16','C14','C12','C10','C08','C06','C04','C02','C01'
             ]
         };
 
@@ -519,9 +519,10 @@
             if (val === '' || val === null || val === undefined) return '';
             const s = val.toString().trim().replace(/\D/g, '');
             if (s === '') return '';
-            if (s.length >= 7) return s.padStart(7, '0'); // already 7 digits — use as-is
-            if (s.length === 6) return s + '0';           // 6-digit trimmed — add trailing 0 → 7
-            return ('0' + s.padStart(5, '0') + '0');      // 5 or fewer — pad to 5 + trailing 0, leading pad to 7
+            if (s.length >= 8) return s.padStart(8, '0'); // 8+ digits — use as-is
+            if (s.length === 7) return s + '0';           // 7-digit stored — add trailing 0 → 8
+            if (s.length === 6) return s + '0';           // 6-digit stored — add trailing 0 → 7
+            return ('0' + s.padStart(5, '0') + '0');      // 5 or fewer — legacy → 7
         }
 
         // ── Toast ─────────────────────────────────────────────────
@@ -537,7 +538,7 @@
         function updateUsageDisplay() {
             const prevDisplay = document.getElementById('prevReading').value.trim();
             const prev = parseFloat(prevDisplay.length > 0 ? prevDisplay.slice(0, -1) : '');
-            const curr = meterBuffer === '0000000' ? NaN : parseFloat(trimReading(meterBuffer));
+            const curr = meterBuffer === '00000000' ? NaN : parseFloat(trimReading(meterBuffer));
             const box = document.getElementById('usageDisplay');
             const val = document.getElementById('usageValue');
             if (!isNaN(prev) && !isNaN(curr) && curr >= prev) {
@@ -557,7 +558,7 @@
         // ── Save reading ──────────────────────────────────────────
         function saveReading(skipAutoAdvance = false, navFn = null) {
             const currRaw = meterBuffer;
-            if (currRaw === '0000000') {
+            if (currRaw === '00000000') {
                 // No data entered — just move on without saving
                 document.getElementById('slipNotes').value = '';
                 document.getElementById('usageDisplay').style.display = 'none';
@@ -619,16 +620,16 @@
         }
 
         // ── Calculator-style meter entry ──────────────────────────
-        let meterBuffer = '0000000';
+        let meterBuffer = '00000000';
 
         function setMeterBuffer(val) {
-            meterBuffer = val.padStart(7, '0').slice(-7);
+            meterBuffer = val.padStart(8, '0').slice(-8);
             document.getElementById('meterReading').value = meterBuffer;
             updateUsageDisplay();
         }
 
         function clearMeterField() {
-            setMeterBuffer('0000000');
+            setMeterBuffer('00000000');
         }
 
         // focusMeterInput: focuses the hidden ghost input so the mobile number
@@ -641,7 +642,7 @@
 
         function _handleMeterKey(key) {
             if (key >= '0' && key <= '9') {
-                setMeterBuffer((meterBuffer + key).slice(-7));
+                setMeterBuffer((meterBuffer + key).slice(-8));
                 return true;
             } else if (key === 'Backspace') {
                 setMeterBuffer('0' + meterBuffer.slice(0, -1));
@@ -1405,6 +1406,15 @@
                 const newMap = {};
                 readings.forEach(r => { newMap[r.meterId] = r; });
 
+                // Derive 6-char trimmed prev string from the locked baseline for any slip
+                const baseline = getBaseline();
+                function bPrev(slip) {
+                    const v = baseline[slip];
+                    if (v === undefined || v === null || v === '') return '';
+                    const d = formatPrevDisplay(v);
+                    return d.length > 0 ? d.slice(0, -1) : '';
+                }
+
                 const canonicalSlips = [...walkOrder];
                 Object.keys(excelMap).forEach(slip => { if (!canonicalSlips.includes(slip)) canonicalSlips.push(slip); });
                 canonicalSlips.sort();
@@ -1416,15 +1426,16 @@
                             const r = newMap[slip];
                             const exCurr = excelMap[slip]?.curr;
                             const prev = (exCurr !== undefined && exCurr !== '' && exCurr !== null)
-                                ? exCurr : (r.prevReading || '');
+                                ? exCurr : (r.prevReading || bPrev(slip));
                             const usage = (prev !== '' && !isNaN(prev) && !isNaN(r.reading))
                                 ? (parseFloat(r.reading) - parseFloat(prev)).toFixed(0) : '';
                             return [slip, prev, r.reading, usage, r.date, r.time, r.notes || '', r.initials || ''];
                         } else if (excelMap[slip]) {
                             const e = excelMap[slip];
-                            return [slip, e.prev ?? '', e.curr ?? '', e.usage ?? '', e.date ?? '', e.time ?? '', e.notes ?? '', e.initials ?? ''];
+                            const prev = (e.prev !== undefined && e.prev !== '' && e.prev !== null) ? e.prev : bPrev(slip);
+                            return [slip, prev, e.curr ?? '', e.usage ?? '', e.date ?? '', e.time ?? '', e.notes ?? '', e.initials ?? ''];
                         } else {
-                            return [slip, '', '', '', '', '', '', ''];
+                            return [slip, bPrev(slip), '', '', '', '', '', ''];
                         }
                     })
                 ];
