@@ -153,6 +153,40 @@
         .toast.show { transform: translateX(-50%) translateY(0); }
         .toast.error { background: #ef5350; color: #fff; }
 
+        .modal-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-box {
+            background: #16213e;
+            border: 2px solid #1a4a80;
+            border-radius: 16px;
+            padding: 28px 24px 20px;
+            width: 100%;
+            max-width: 360px;
+            text-align: center;
+        }
+        .modal-msg { font-size: 1rem; color: #eee; line-height: 1.5; margin-bottom: 20px; white-space: pre-line; }
+        .modal-input {
+            width: 100%; padding: 12px 14px; font-size: 1.2rem;
+            background: #0f3460; border: 2px solid #1a4a80; border-radius: 10px;
+            color: #fff; outline: none; margin-bottom: 20px; text-align: center; letter-spacing: 1px;
+        }
+        .modal-input:focus { border-color: #4fc3f7; }
+        .modal-btns { display: flex; gap: 12px; }
+        .modal-btn {
+            flex: 1; padding: 14px; font-size: 1rem; font-weight: bold;
+            border: none; border-radius: 10px; cursor: pointer;
+        }
+        .modal-btn-ok { background: linear-gradient(135deg, #4fc3f7, #0288d1); color: #fff; }
+        .modal-btn-cancel { background: #263238; color: #aaa; }
+
         .progress-bar-wrap {
             width: 100%;
             background: #0f3460;
@@ -298,7 +332,7 @@
         <input type="checkbox" id="chkITOnly" style="display:none;">
 
         <div style="position:fixed; bottom:14px; left:50%; transform:translateX(-50%); font-size:12pt; color:#888; user-select:none; display:flex; align-items:center; gap:14px; padding-bottom:env(safe-area-inset-bottom, 0);">
-            <span style="cursor:pointer;" onclick="toggleITOnly()">Ver 1.7.8 &nbsp;6/22/2026</span>
+            <span style="cursor:pointer;" onclick="toggleITOnly()">Ver 1.7.9 &nbsp;6/22/2026</span>
             <span style="cursor:pointer; font-size:18pt; padding:6px 10px;" onclick="forceReload()" title="Reload latest version (clears cache)">🔄</span>
         </div>
     </div>
@@ -556,7 +590,7 @@
         }
 
         // ── Save reading ──────────────────────────────────────────
-        function saveReading(skipAutoAdvance = false, navFn = null) {
+        async function saveReading(skipAutoAdvance = false, navFn = null) {
             const currRaw = meterBuffer;
             if (currRaw === '00000000') {
                 // No data entered — just move on without saving
@@ -574,7 +608,8 @@
             const currFull = parseFloat(currRaw);                      // e.g. "045100" → 45100
             const prevFull = parseFloat(prevDisplay);                  // e.g. "045100" → 45100
             if (prevDisplay && !isNaN(currFull) && !isNaN(prevFull) && currFull < prevFull) {
-                if (!confirm(`⚠️ Current reading (${currRaw}) is LESS than previous (${prevDisplay}).\n\nIs this correct?`)) {
+                const ok = await showConfirm(`⚠️ Current reading (${currRaw}) is LESS than previous (${prevDisplay}).\n\nIs this correct?`);
+                if (!ok) {
                     focusMeterInput();
                     return;
                 }
@@ -1067,7 +1102,7 @@
 
         // ── Save PEPCO KWH Rate ───────────────────────────────────
         async function saveKwhRate() {
-            const input = prompt('Enter PEPCO KWH Rate (e.g. 0.1809):');
+            const input = await showPrompt('Enter PEPCO KWH Rate:', '0.1809');
             if (input === null) return;
             const rate = parseFloat(input.trim());
             if (isNaN(rate) || rate <= 0) { showToast('⚠️ Invalid rate — please enter a number like 0.1809', true); return; }
@@ -1167,7 +1202,7 @@
 
         // ── Reset Spreadsheet (Start New Month) ───────────────────
         async function resetSpreadsheet() {
-            if (!confirm('⚠️ This will archive the current data and start a new billing cycle.\n\nContinue?')) return;
+            if (!await showConfirm('⚠️ This will archive the current data and start a new billing cycle.\n\nContinue?')) return;
 
             try {
                 setHomeStatus('⏳ Connecting to SharePoint…');
@@ -1537,6 +1572,58 @@
             location.replace(base + '?v=' + Date.now());
         }
 
+        // ── Custom modal (iOS PWA blocks native confirm/prompt) ────
+        function showConfirm(msg) {
+            return new Promise(resolve => {
+                document.getElementById('modalMsg').textContent = msg;
+                document.getElementById('modalInput').style.display = 'none';
+                document.getElementById('modalCancel').style.display = '';
+                document.getElementById('modalOverlay').classList.add('show');
+                const cleanup = (result) => {
+                    document.getElementById('modalOverlay').classList.remove('show');
+                    document.getElementById('modalOk').onclick = null;
+                    document.getElementById('modalCancel').onclick = null;
+                    resolve(result);
+                };
+                document.getElementById('modalOk').onclick = () => cleanup(true);
+                document.getElementById('modalCancel').onclick = () => cleanup(false);
+            });
+        }
+
+        function showPrompt(msg, placeholder = '') {
+            return new Promise(resolve => {
+                document.getElementById('modalMsg').textContent = msg;
+                const inp = document.getElementById('modalInput');
+                inp.value = '';
+                inp.placeholder = placeholder;
+                inp.style.display = '';
+                document.getElementById('modalCancel').style.display = '';
+                document.getElementById('modalOverlay').classList.add('show');
+                setTimeout(() => inp.focus(), 50);
+                const cleanup = (result) => {
+                    document.getElementById('modalOverlay').classList.remove('show');
+                    document.getElementById('modalOk').onclick = null;
+                    document.getElementById('modalCancel').onclick = null;
+                    resolve(result);
+                };
+                document.getElementById('modalOk').onclick = () => cleanup(inp.value);
+                document.getElementById('modalCancel').onclick = () => cleanup(null);
+                inp.onkeydown = (e) => { if (e.key === 'Enter') cleanup(inp.value); };
+            });
+        }
+
     </script>
+
+    <!-- ══ CUSTOM MODAL (replaces confirm/prompt for iOS PWA) ══ -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-box">
+            <div class="modal-msg" id="modalMsg"></div>
+            <input type="text" class="modal-input" id="modalInput" style="display:none;" inputmode="decimal">
+            <div class="modal-btns">
+                <button class="modal-btn modal-btn-cancel" id="modalCancel">Cancel</button>
+                <button class="modal-btn modal-btn-ok" id="modalOk">OK</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
