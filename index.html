@@ -332,7 +332,7 @@
         <input type="checkbox" id="chkITOnly" style="display:none;">
 
         <div style="position:fixed; bottom:14px; left:50%; transform:translateX(-50%); font-size:12pt; color:#888; user-select:none; display:flex; align-items:center; gap:14px; padding-bottom:env(safe-area-inset-bottom, 0);">
-            <span style="cursor:pointer;" onclick="toggleITOnly()">Ver 1.7.9 &nbsp;6/22/2026</span>
+            <span style="cursor:pointer;" onclick="toggleITOnly()">Ver 1.8.0 &nbsp;6/24/2026</span>
             <span style="cursor:pointer; font-size:18pt; padding:6px 10px;" onclick="forceReload()" title="Reload latest version (clears cache)">🔄</span>
         </div>
     </div>
@@ -411,9 +411,10 @@
 
 
 <script>
-        const STORAGE_KEY  = 'meter_readings';
-        const BASELINE_KEY = 'meter_baseline';
-        const INITIALS_KEY = 'meter_initials';
+        const STORAGE_KEY   = 'meter_readings';
+        const BASELINE_KEY  = 'meter_baseline';
+        const INITIALS_KEY  = 'meter_initials';
+        const SLIP_ORDER_KEY = 'meter_slip_order';
         const DOCKS = ['A', 'B', 'C'];
 
         function getInitials() { return (localStorage.getItem(INITIALS_KEY) || '').toUpperCase(); }
@@ -510,6 +511,8 @@
         // ── Baseline ──────────────────────────────────────────────
         function getBaseline() { return JSON.parse(localStorage.getItem(BASELINE_KEY) || '{}'); }
         function saveBaseline(b) { localStorage.setItem(BASELINE_KEY, JSON.stringify(b)); }
+        function getSlipOrder() { return JSON.parse(localStorage.getItem(SLIP_ORDER_KEY) || '[]'); }
+        function saveSlipOrder(o) { localStorage.setItem(SLIP_ORDER_KEY, JSON.stringify(o)); }
 
         // ── Auto-fill ─────────────────────────────────────────────
         function autoFillPrev() {
@@ -934,12 +937,15 @@
                         if (elecRange.ok) {
                             const elecRows = (await elecRange.json()).values || [];
                             const baseline = {};
+                            const slipOrder = [];
                             for (const row of elecRows) {
                                 const slip    = (row[0] || '').toString().trim();
                                 const reading = row[6]; // col H — most recent billing cycle
+                                if (slip) slipOrder.push(slip);
                                 if (slip && reading !== '' && reading !== null) baseline[slip] = reading;
                             }
                             saveBaseline(baseline);
+                            saveSlipOrder(slipOrder);
                             baselineCount = Object.keys(baseline).length;
                         }
                     }
@@ -1353,12 +1359,15 @@
                     const elecRows = (await elecRange.json()).values || [];
 
                     const baseline = {};
+                    const slipOrder = [];
                     for (const row of elecRows) {
                         const slip    = (row[0] || '').toString().trim();
                         const reading = row[6]; // col H
+                        if (slip) slipOrder.push(slip);
                         if (slip && reading !== '' && reading !== null) baseline[slip] = reading;
                     }
                     saveBaseline(baseline);
+                    saveSlipOrder(slipOrder);
                     const count = Object.keys(baseline).length;
                     showToast(`✅ Archived · ${count} previous readings loaded`);
                 }
@@ -1449,9 +1458,12 @@
                     return d.length > 0 ? d.slice(0, -1) : '';
                 }
 
-                const canonicalSlips = [...walkOrder];
-                Object.keys(excelMap).forEach(slip => { if (!canonicalSlips.includes(slip)) canonicalSlips.push(slip); });
-                canonicalSlips.sort();
+                // Order rows to match Electricity Report; append any unknown slips at the end
+                const erOrder = getSlipOrder();
+                const canonicalSlips = erOrder.length > 0 ? [...erOrder] : [...walkOrder];
+                [...walkOrder, ...Object.keys(excelMap)].forEach(slip => {
+                    if (!canonicalSlips.includes(slip)) canonicalSlips.push(slip);
+                });
 
                 const rows = [
                     ['Slip', 'Current Reading', 'Date', 'Time', 'Notes', 'Reader'],
