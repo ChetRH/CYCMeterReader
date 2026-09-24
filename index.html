@@ -332,7 +332,7 @@
         <input type="checkbox" id="chkITOnly" style="display:none;">
 
         <div style="position:fixed; bottom:14px; left:50%; transform:translateX(-50%); font-size:12pt; color:#888; user-select:none; display:flex; align-items:center; gap:14px; padding-bottom:env(safe-area-inset-bottom, 0);">
-            <span style="cursor:pointer;" onclick="toggleITOnly()">Ver 1.8.0 &nbsp;6/24/2026</span>
+            <span style="cursor:pointer;" onclick="toggleITOnly()">Ver 1.8.1 &nbsp;9/24/2026</span>
             <span style="cursor:pointer; font-size:18pt; padding:6px 10px;" onclick="forceReload()" title="Reload latest version (clears cache)">🔄</span>
         </div>
     </div>
@@ -365,6 +365,7 @@
                 <div id="currentSlipDisplay" style="font-size:2.4rem; font-weight:bold; color:#ffe066; letter-spacing:3px; flex:1; text-align:center;">A01</div>
                 <button class="slip-nav-btn" id="nextSlipBtn" onclick="saveAndNavigate(nextSlip)" title="Next slip">&#8594;</button>
             </div>
+            <div id="boatNameDisplay" style="min-height:1.3em; font-size:1.05rem; font-style:italic; color:#4fc3f7; text-align:center; margin-top:2px;"></div>
             <div class="progress-bar-wrap">
                 <div class="progress-bar" id="progressBar" style="width:0%"></div>
             </div>
@@ -415,6 +416,7 @@
         const BASELINE_KEY  = 'meter_baseline';
         const INITIALS_KEY  = 'meter_initials';
         const SLIP_ORDER_KEY = 'meter_slip_order';
+        const BOATS_KEY     = 'meter_boats';
         const DOCKS = ['A', 'B', 'C'];
 
         function getInitials() { return (localStorage.getItem(INITIALS_KEY) || '').toUpperCase(); }
@@ -454,6 +456,7 @@
             const id = currentSlipId();
             const dock = id[0];
             document.getElementById('currentSlipDisplay').textContent = id;
+            document.getElementById('boatNameDisplay').textContent = getBoats()[id] || '';
             DOCKS.forEach(d => document.getElementById('dock' + d).classList.toggle('active', d === dock));
             const pct = walkOrder.length > 1 ? (walkIndex / (walkOrder.length - 1)) * 100 : 0;
             document.getElementById('progressBar').style.width = `${pct}%`;
@@ -513,6 +516,8 @@
         function saveBaseline(b) { localStorage.setItem(BASELINE_KEY, JSON.stringify(b)); }
         function getSlipOrder() { return JSON.parse(localStorage.getItem(SLIP_ORDER_KEY) || '[]'); }
         function saveSlipOrder(o) { localStorage.setItem(SLIP_ORDER_KEY, JSON.stringify(o)); }
+        function getBoats() { try { return JSON.parse(localStorage.getItem(BOATS_KEY) || '{}'); } catch { return {}; } }
+        function saveBoats(b) { localStorage.setItem(BOATS_KEY, JSON.stringify(b)); }
 
         // ── Auto-fill ─────────────────────────────────────────────
         function autoFillPrev() {
@@ -743,6 +748,7 @@
         const SP_HOSTNAME   = 'capitalyachtclubcom.sharepoint.com';
         const SP_SITE_PATH  = '/sites/DockOperations';
         const EXCEL_FILE    = 'CYC Dock Meter Reading.xlsx';
+        const BOATS_FILE    = 'slip-boats.json';
         const ELEC_RPT_FILE = 'Electricity Report.xlsx';
         const GRAPH_SCOPES  = ['Files.ReadWrite.All', 'Sites.ReadWrite.All', 'User.Read', 'Mail.Send'];
         const NOTIFY_EMAILS = [
@@ -868,9 +874,11 @@
             try {
                 if (action === 'startNew') {
                     await resetSpreadsheet();
+                    await loadBoatNames();
                 } else if (action === 'resume') {
                     setHomeStatus('⏳ Loading current cycle data from SharePoint…');
                     await loadBaselineFromSharePoint();
+                    await loadBoatNames();
                     setHomeStatus('');
                     hideHomeScreen();
                 } else if (action === 'send') {
@@ -891,6 +899,42 @@
             } catch (e) {
                 const resp = await msalInstance.acquireTokenPopup({ scopes: GRAPH_SCOPES });
                 return resp.accessToken;
+            }
+        }
+
+        // ── Load boat names ───────────────────────────────────────
+        // slip-boats.json ([{Slip, BoatName}]) is written nightly to Meter Archive by the
+        // "Slip Boat Names to DockOperations" Power Automate flow from the office Assignments.xlsx.
+        // Optional — on any failure the last cached names are kept.
+        async function loadBoatNames() {
+            if (!msalInstance || !msalAccount) return;
+            try {
+                const headers = { 'Authorization': 'Bearer ' + await getToken() };
+                const siteRes = await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_HOSTNAME}:${SP_SITE_PATH}`, { headers });
+                if (!siteRes.ok) return;
+                const siteId = (await siteRes.json()).id;
+                const siteDrives = (await (await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/drives`, { headers })).json()).value || [];
+                for (const drive of siteDrives) {
+                    const searchRes = await fetch(`https://graph.microsoft.com/v1.0/drives/${drive.id}/root/search(q='slip-boats')`, { headers });
+                    if (!searchRes.ok) continue;
+                    const found = ((await searchRes.json()).value || []).find(f => f.name === BOATS_FILE);
+                    if (!found) continue;
+                    const item = await (await fetch(`https://graph.microsoft.com/v1.0/drives/${drive.id}/items/${found.id}`, { headers })).json();
+                    const url = item['@microsoft.graph.downloadUrl'];
+                    if (!url) return;
+                    const rows = JSON.parse((await (await fetch(url)).text()).replace(/^﻿/, ''));
+                    const boats = {};
+                    for (const r of rows) {
+                        const slip = (r.Slip || '').toString().trim();
+                        const name = (r.BoatName || '').toString().trim();
+                        if (slip && name) boats[slip] = name;
+                    }
+                    saveBoats(boats);
+                    updateSlipDisplay();
+                    return;
+                }
+            } catch (e) {
+                console.warn('Boat names load failed:', e.message);
             }
         }
 
